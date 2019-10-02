@@ -56,3 +56,8 @@ También podemos usar los ``Public Claim Names``, estos pueden usarse entre dife
 
 - **Signature**: La tercera parte del JWT que es la firma y es lo que hace muy poderoso el JWT está compuesto por el header códificado más el payload códificado, ha esto se le aplica el algoritmo de encriptación por su puesto usando un ``secret``. En el caso del algoritmo H256 debemos usar un string de 256 bits de longitud.
 
+
+## Autenticación tradicional vs JWT
+
+
+
