@@ -1,0 +1,15 @@
+{
+  "name": "jwt-utilities",
+  "version": "1.0.0",
+  "description": "passportjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Jasan A. Hernández Bautista<jasan814@gamil.com>",
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "^8.5.1"
+  }
+}
