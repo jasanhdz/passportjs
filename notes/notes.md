@@ -42,9 +42,9 @@ Un JWT es un estandart de la industria que nos permite generar demandas entre 2 
 
 En la columna de izquierda puedes ver como es un JWT mientras que en la columna de la derecha puedes ver un JWT decodificado.
 
-Un JWT consta de 3 partes: **Header, Payload y Signature**
+Un JWT consta de 3 partes: **Header, Payload y Signature**, generalmente divididas por un punto.
 
-- El **Header**: tiene 2 atributos, el tipo que en esté caso siempre debería ser JWT y el algoritmo de encriptación de la firma, el algoritmo de encriptación de la firma puede ser sincrono o asincrono. Recordemos que los algoritmos asincronos **usan 2 llaves** de encriptación; una llave **privada** y una llave **pública**, donde la llave pública se usa para encriptar y la llave privada se usa para desencriptar y el los algoritmos de encriptación sincronos se usa la misma llave para desencriptar e incriptar, ambos son seguros de usar pero depende donde los uses.
+- **Header**: tiene 2 atributos, el tipo que en esté caso siempre debería ser JWT y el algoritmo de encriptación de la firma, el algoritmo de encriptación de la firma **puede ser sincrono o asincrono**. Recordemos que los algoritmos asincronos **usan 2 llaves** de encriptación; una llave **privada** y una llave **pública**, donde la llave pública se usa para encriptar y la llave privada se usa para desencriptar y el los algoritmos de encriptación sincronos se usa la misma llave para desencriptar e incriptar, ambos son seguros de usar pero depende donde los uses.
 
 Los algoritmos asincronos deben usarse donde hay partes públicas que puedan tener acceso a está llave, mientras que los algoritmos sincronos solo deben usarse en sistemas como el [backend](https://platzi.com/blog/que-es-frontend-y-backend/).
 
@@ -54,10 +54,171 @@ Nosotros en la página donde está el estandart podemos ver en la sección 4.1 l
 
 También podemos usar los ``Public Claim Names``, estos pueden usarse entre diferentes aplicaciones y ya estan también definidos, mientras que los **Private Claim Names**, son los que tu defines para tu aplicación.
 
-- **Signature**: La tercera parte del JWT que es la firma y es lo que hace muy poderoso el JWT está compuesto por el header códificado más el payload códificado, ha esto se le aplica el algoritmo de encriptación por su puesto usando un ``secret``. En el caso del algoritmo H256 debemos usar un string de 256 bits de longitud.
+
+- **Signature**: La tercera parte del JWT que es la firma y es lo que hace muy poderoso el JWT está compuesto por el **header códificado** más el **payload códificado**, ha esto se le aplica el algoritmo de encriptación por su puesto usando un ``secret``. En el caso del algoritmo H256 debemos usar un string de 256 bits de longitud.
 
 
 ## Autenticación tradicional vs JWT
 
+En la autenticación tradicional cuando sucede un proceso de autenticación se crea una sesión, el id de está sesión se almacena en una cookie que es enviada al navegador. Recordemos que las cookies no se llaman cookies por las galletas de chocolate, sino que se llamán cookies **por las galletas de la fortuna que tienen mensajes**, apartir de ahí todos los request tienen la cookie que tiene almacena el id de la sesión y está es usada para verificar la sesión previamente activa, uno de los problemas que tiene es esté browser es por ejemplo: clientes como las Single Pages Apps, no pueden refrescar o no pueden refrescar todas las veces entonces no pudieron saber si hubo cambios en la sesión. Otro problema es que por definición las Rest API no deberían tener estado, al usar sesiones estamos generando estado y esto contradice esté principio, otro problema es que en arquitecturas modernas que usan por ejemplo microservicios, la sesión que solo existe en una máquina no fluye durante los otros clientes, entonces es un poco dificil de escalar, y otro problema es que por ejemplo el control de acceso siempre requiere que vallamos a base de datos, finalmente controlar el uso de memoria también puede ser un problema, ya que cada cliente que se conecta genera una sesión generando más consumo de memoria.
+
+En la autenticación con JWT al suceder el proceso de autenticación se firma un token, apartir de ahí el token es enviado al cliente y esté deber ser almacenado en memoria o en una cookie, todos los request de aquí en adelante llevan esté token, una de las ventajas es que una aplicación como una Single Pages App ya no requiere del backend para saber si el usuario está autenticado, lo otro es que el backend puede recibir múltiples request de múltiples clientes y lo único que le interesa es saber si el token está bien firmado, finalmente es el cliente quien sabe que permisos tienen y no tiene que ir hasta base de datos para saber si tiene estos permisos.
+
+## Firmando y verificando un JWT
+
+Para firmar un JWT lo primero que debemos hacer es hacer uso de una librería llamada ``nodejsonwebtoken`` está librería tiene un método llamado ``sign``, el primer sign recibe como primer argumento el ``payload`` de JWT, recordemos que esté payload esta construido con los diferentes **claims** que definamos, como segundo atributo debe recibir el ``secret`` con el que va ha ser firmado la firma del JWT, y finalmente hay un tercer argumento que pueden ser ``options`` extras para nuestro firmado del JWT.
+
+Para la verificación de nuestro JWT usando la misma librería vamos a hacer uso de la misma librería, vamos a hacer uso del método ``verify``, en el primer argumento vamos a recibir el ``token`` que queremos verificar, como segundo argumento vamos a recibir el ``secret`` y como tercer argumento de manera opcional vamos a recibir un callback que nos va a regresar el JWT decodificado, también podemos omitir esté tercer argumento y simplemente recibirlo de manaera sincrona. 
+
+Vamos ver en el código como puedes lograr estó: _Para esté ejemplo_
+
+1. Creamos una carpeta llamada ``jwt-utilities``
+2. Ahi vamos a crear nuestro ejemplo usando ``npm init -y``
+3. Creamos un archivo index.js.
+4. Instalamos nuestra dependencia de JWT ``npm i jsonwebtoken``
+5. En nuestro archivo index vamos a requerir la librería
+```const jwt = require('jsonwebtoken');``
+
+En el vamos a hacer varias cosas, lo primero es que sus argumentos los vamos a sacar de la terminal, para ello vamos a hacer uso de process argument. El process argument lo que hace es que lee los comando de la terminal.
+```js
+const [, , option] 
+// la opcion va a estar definida por verificar o por firmar.
+```
+Los primeros 2 párametros que no estamos definiendo aquí  son: 
+el proceso de node y el archivo que estamos leyendo, por lo que nosotros empezaremos a leer desde el 3ter argumento.
+
+Luego vamos a pedir el ``secret`` y finalmente vamos a pedir un nombre o un token en nuestro ejemplo, todo esto lo sacamos del process.argv;
+```js
+const [, , option, secret, nameOrToken] = process.argv; 
+```
+
+La implementación de JWT quedaría de la siguiente manera:
+
+```js
+const jwt = require('jsonwebtoken');
+/**
+ * Los primeros 2 párametros que no estamos definiendo aquí  son: 
+ * el proceso de node y el archivo que estamos leyendo, por lo que
+ * nosotros empezaremos a leer desde el 3ter argumento.
+ */
+const [, , option, secret, nameOrToken] = process.argv; 
+// la opcion va a estar definida por verificar o por firmar.
+
+// vamos a verificar si tenemos las opciones  o argumentos y si no los tenemos que nos saque un error
+if (!option || !secret || !nameOrToken) {
+  console.log('Missing arguments');
+}
+
+/**
+ * Despues de que pase nuestra prueba de argumentos crearemos 2 funciones
+ * 
+ */
+
+function signToken(payload, secret) {
+
+  return jwt.sign(payload, secret);
+}
+
+function verifyToken(token, secret) {
+  // retorna el token decodificado
+  return jwt.verify(token, secret)
+}
+
+// vamos a hacer nuestro flujo de ejecución 
+if (option == 'sign') {
+  
+  console.log(signToken({ sub: nameOrToken }, secret));
+} else if (option == 'verify') {
+  console.log(verifyToken(nameOrToken, secret));
+} else {
+  console.log('Options needs to be "sign" or "verify" ');
+}
+```
+
+Ahora vamos a hacer una prueba:
+
+``node index.js sign secret jasan``
+
+Una vez generado el JWT vamos a ir [jwt.io](htttps://jwt.io) que es una página donde podemos hacer debuggin del token. Y podemos verificar que está página nos hace una decodificación tál y como lo vimos en el modulo de la anatomía de un JWT.
+
+Ahora vamos usar esté mismo JWT y vamos a usar la utilidad para verificarlo, para eso lo único que debemos hacer es usar la palabra verify y como tercer cuarto parametro le vamos a pasar el secret y por ultimo el token.
+
+``node index.js verify secret eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqYXNhbiIsImlhdCI6MTU3MDE0NTQ5MH0.1OXIA17Rl2Oy4b8aq68vZL_srFuVsYwPbHWAXurkkoI``
+
+Hay que tener mucho cuidado cuando estamos manipulando la consola, porque sule partirnos el JWT y lo que debemos hacer es ubicarlo en una sola linea.
+
+## Server-side vs Client-side sessions
+
+**Sesiones del lado del servidor vs sesiones del lado del cliente**
+
+### ¿Qué es una sesión?
+
+En terminos generales una sesion es una manera de preservar un estado deseado.
+
+### ¿Qué es una sesion del lado del servidor?
+
+La sesión en el lado del servidor suele ser una pieza de información que se guarda en memoria o en una base de datos y esta permite hacerle seguimiento a la información de autenticación, con el fin de identificar al usuario y determinar cuál es el estado de autenticación. Mantener la sesión de esta manera en el lado del servidor es lo que se considera “statefuful”, es decir que maneja un estado.
+
+### ¿Qué es una sesión del lado del cliente?
+
+Las SPA (Single-page apps) requieren una manera de saber si el usuario esta autenticado o no. Pero esto no se puede hacer de una manera tradicional porque suelen ser muy desacopladas con el backend y no suelen refrescar la página como lo hacen las aplicaciones renderizadas en el servidor.
+
+JWT (JSON Web Token) es un mecanismo de autenticación sin estado, lo que conocemos como “stateless”. Lo que significa que no hay una sesión que exista del lado del servidor.
+
+La manera como se comporta la sesión del lado del cliente es:
+
+1. Cuando el usuario hace “login” agregamos una bandera para indicar que lo esta.
+2. En cualquier punto de la aplicación verificamos la expiración del token.
+3. Si el token expira, cambiamos la bandera para indicar que el usuario no está logueado.
+4. Se suele chequear cuando la ruta cambia.
+5. Si el token expiró lo redireccionamos a la ruta de “login” y actualizamos el estado como “logout”.
+6. Se actualiza la UI para mostrar que el usuario ha cerrado la sesión.
+
+## Buenas Prácticas con JWT
+
+### Buenas practicas con JSON Web token
+
+En los últimos años se ha criticado fuertemente el uso de JSON Web Tokens como buena práctica de seguridad. La realidad es que muchas compañías hoy en día los usan sin ningún problema siguiendo unas buenas practicas de seguridad, que aseguran su uso sin ningún inconveniente.
+
+A continuación listaremos unos consejos que se deben tener en cuenta:
+
+### Evitar almacenar información sensible
+
+Debido a que los JSON Web tokens son decodificables es posible visualizar la información del payload, por lo que ningún tipo de información sensible debe ser expuesto como contraseñas, keys, etc. Tampoco debería agregarse información confidencial del usuario como su numero de identificación o información medica, ya que como hablamos anteriormente, los hackers pueden usar esta información para hacer ingeniería social.
+
+### Mantener su peso lo más liviano posible
+
+Suele tenerse la tentación de guardar toda la información del perfil en el payload del JWT, pero esto no debería hacerse ya que necesitamos que el JWT sea lo más pequeño posible debido a que al enviarse con todos los request estamos consumiendo parte del bando de ancha.
+
+### Establecer un tiempo de expiración corto
+
+Debido a que los tokens pueden ser robados si no se toman las medidas correctas de almacenamiento seguro, es muy importante que estos tengan unas expiración corta, el tiempo recomendado es desde 15 minutos hasta un maximo de 2 horas.
+
+### Tratar los JWT como tokens opacos
+
+Aunque los tokens se pueden decodificar, deben tratarse como tokens opacos, es decir como si no tuviesen ningún valor legible. Esto es porque desde el lado del cliente no tenemos manera de verificar si la firma es correcta, así que si confiamos en la información decodificada del token, alguien podría introducir un token invalido con otra información a propósito. Lo mejor, es siempre enviar el token del lado del servidor y hacer las verificaciones allí.
+
+### ¿Donde guardar los tokens?
+
+Cuando estamos trabajando con SPA (Single Page apps) debemos evitar almacenar los tokens en Local Storage o Session Storage. Estos deben ser almacenados en memoria o en una Cookie, pero solo de manera segura y con el flag httpOnly, esto quiere decir que la cookie debe venir del lado del servidor con el token almacenado. Más información:
+https://auth0.com/docs/security/store-tokens#single-page-apps
+
+### Silent authenticacion vs Refresh tokens
+
+Debido a que es riesgoso almacenar tokens del lado del cliente, no se deberian usar Refresh Tokens cuando se trabaja solo con una SPA. Lo que se debe implementar es Silent Authentication, para ello se debe seguir el siguiente flujo:
+
+1. La SPA obtiene un access token al hacer login o mediante cualquier flujo de OAuth.
+2. Cuando el token expira el API retornara un error 401.
+3. En este momento se debe detectar el error y hacer un request para obtener de nuevo un access token.
+4. Si nuestro backend server tiene una sesión valida (Se puede usar una cookie) entonces respondemos con un nuevo access token.
+
+Más información:
+
+- https://auth0.com/docs/api-auth/tutorials/silent-authentication
+- https://auth0.com/docs/tokens/refresh-token/current
+
+Hay que tener en cuenta que para implementar Silent authentication y Refresh tokens, se require tener un tipo de sesión valida del lado del servidor por lo que en una SPA es posible que sea necesario una especie de backend-proxy, ya que la sesión no debería convivir en el lado del API server.
+
+En el paso 2, si se esta usando alguna librería para manejo de estado como redux, se puede implementar un middleware que detecte este error y proceda con el paso 3.
 
 
