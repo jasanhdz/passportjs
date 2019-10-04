@@ -221,4 +221,94 @@ Hay que tener en cuenta que para implementar Silent authentication y Refresh tok
 
 En el paso 2, si se esta usando alguna librería para manejo de estado como redux, se puede implementar un middleware que detecte este error y proceda con el paso 3.
 
+## ¿Qué son las cookies y cómo implementar el manejo de sesión?
+
+### ¿Qué es un cookie?
+
+Una cookie es un archivo creado por un sitio web que tiene pequeños pedazos de datos almacenados en él, su proposito principal es identificar al usuario mediante el almacenamiento de su historial. 
+
+Las _cookies de sesión_ o **cookiesSession** tienen un corto tiempo de vida, ya que estas son removidas cuando se cierra el tab o el navegador. 
+
+Las **persistent cookies** ó cookies percisitentes se usan generalmente para restaurar al usuario guardando información de su interes.
+
+Las secure cookies almacenan datos de manera cifrada para que terceros mal intencionados no puedan robar la información en el, suelen usarse en conexiones https es decir en conexiones seguras.
+
+Hay leyes de cookies que debes seguir al pie de la letra:
+
+- Avisarle al usuario que estás haciendo uso de cookies en tu sitio para guardar información.
+
+- Es necesario que el usuario de su consentimiento para manejar cookies en tu sitio.
+
+Si las cookies son necesarias para la autentiación del usuario o para algún problema de seguridad esas leyes no aplican en esté caso.
+
+En esté curso vamos a hacer uso de cookies para almacenar el id de la sessión. 
+
+### Implementación de cookies 
+
+A continuación lo haremos en el código:
+
+1. vamos a crear una carpeta llamada handle-session
+2. Ingresamos a la carpeta y creamos nuestro ``packages.json`` con ``npm init -y``
+3. Vamos a instalar las siguientes dependencias: ``express express-session``, **express-session:** <span style="color:red;font-weight:bold;">que nos permite hacer el manejo de sesión con cookies</span>
+4. También vamos a instalar una dependencia de desarrollo llamada ``nodemon`` 
+5. Vamos a crear un nuevo archivo llamado ``index.js``.
+6. En nuestro archivo index vamos a crear nuestro servidor:
+
+```js
+const express = require("express");
+// nos permite el manejo de session
+const session = require("express-session");
+
+// creamos nuestra nueva aplicación
+const app = express();
+
+// voy a definir el manejo de la session mediante el app.use
+// dentro de él le paso las siguientes sessiones
+app.use(
+  session({
+    resave: false, // no guardar la cookies cada vez que hay un cambió
+    saveUninitialized: false, // si la cookies no se inicializado no la guarde por defecto.
+    // se define un secret: debe ser de por lo menos 256 bits,
+    // esto es lo que definie de cuando lo cookie es segura va a cifrarla haciendo uso de esté secret.
+    secret: "keyboard cat"
+  })
+);
+
+// creamos una ruta que hace que en el home vamos a hacer el request
+// y hacer uso de nuestra session
+app.use("/", (req, res) => {
+  // verificamos
+  req.session.count = req.session.count ? req.session.count + 1 : 1;
+  res.status(200).json({ hello: "world", counter: req.session.count });
+
+  // Fijense que por el hecho de haber usado la session con el app.use,
+  // nosotros podemos acceder a nuestro req.session y ahí es donde podemos almacenar
+  // todos los atributos de la session
+});
+
+// finalmente para que nuestro servidor suba, tenemos que hacer un listener
+app.listen(3000, () => {
+  console.log("Listening htttp://localhost:3000");
+});
+```
+
+Con esto ya tenemos una pequeña implementación de nuestra session, ahora lo que podemos hacer es generar 2 scripts en nuestro packages.json, uno para desarrollo y uno de start:
+
+```json
+{
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  }
+}
+```
+
+Fijense que si hacemos refresh al servidor el empieza a contar, y es porque precisamente está almacenando esté contador en la session. Si abrimos nuestro developer tools y refrescamos de nuevo, nos damos cuenta que en el request siempre se está enviando la cookie. Si nos vamos a **aplication** y eliminamos la cookie de nuestra sesión en esté caso es ``connect.sid``, al eliminarla y refrescar vuelve y empieza el contador de session, y la petición esta vez nos muestra que en el response se esta estableciendo la cookie.
+
+Con estó tenemos un ejemplo muy claro de como podemos hacer manejo de la session haciendo uso de cookies.
+
+
+
+
+
 
