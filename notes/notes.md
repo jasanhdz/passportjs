@@ -353,6 +353,22 @@ Challenge: Discutir si fueramos a implementar autenticación que opción entre C
 
 _Usaría Cookies para guardar la información sensible, y Web Storage para almacenar otra información no sensible. Además la web storage se crea desde el lado del cliente y no del lado de servidor. Cookies definitivamente._
 
+## Arquitectura del Proyecto VideoCine
 
+En esté modulo aprenderas a como crear una capa de autenticación con express haciendo uso de la librería passportjs. 
+
+Lo primero que vamos a hacer es hablar de la arquitectura del proyecto.
+
+La arquitectura del proyecto depende de una API server que fue construido en backendnodejs de la escuela de Javascript. El API Server tiene un CRUD de peliculas es decir podemos crear, leer, actualizar y eliminar peliculas. Pero en esté repositorio vamos a agregar unos endpoints para hacer sigIn es decir autenticar un usuario, y un endpoint para hacer SignOut es decir para crear nuevos usuarios.
+
+Para poder consumir esté endpoint de SignIn los clientes en esté caso **Admin Client** es el que esté debajo de nuestro API Server y el Render Server es el que está en la izquierda, necesitan una API Token, **está API Token es muy diferente a un Access Token** y ya vamos a hablar de sus diferencias.
+
+Esté API Token lo que nos permite es definir los permisos que vana definir estos clientes, para el caso del Admin Client el API Token le va a conceder unos permisos administrativos es decir unos permisos que va a permitir: leer, crear, actualizar y eleminar peliculas.
+
+Mientras que el Render Server va ha utilizar una API Token con permisos públicos de solo lectura. Cuando el Render Server o el Admin Client haciendo uso de estos diferentes API Tokens hagan la autenticación, toda nuestra estrategia de autenticación va a generar un Access Token esté Acess va ha ser un JSON Web Token que va ha tener la información del usuario que hace autenticación y los permisos determinados por el API Token. 
+
+De está manera en las peticiónes siguientes nuestro Render Server o Admin Client con el Access Token que fue generado va a poder consumir los recursos del API Token. Las Single Pages App que va ha estar construida con: React, Vue o Angular, pero en el caso de la escuela de Javascript va ha estar construida con React. La manera en como se va ha comunicar con nuestro API Server va ha ser atravez del Render Server que va ha ser de Proxy, para está arquitectura es muy importante que la SPA tenga un servidor porque toda la comunicación que sucede de los Access Token mediante el API Server, debe ocurrir en el Servidor. 
+
+Si tu no tienes un Render-Server es necesario que crees un Server que haga de Proxy entre la SPA y el API Server. La manera en como la SPA se va ha comunicar con el API Server es mediante una cookie que va ha tener el Access Token del Render Server. Vamos a explorar en el código como está construido el API Server que fue hecho en el repositorio del [backendnodejs](https://github.com/JasanHdz/backendnodejs) 
 
 
