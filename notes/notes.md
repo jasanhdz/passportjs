@@ -307,7 +307,51 @@ Fijense que si hacemos refresh al servidor el empieza a contar, y es porque prec
 
 Con estó tenemos un ejemplo muy claro de como podemos hacer manejo de la session haciendo uso de cookies.
 
+## Cookies vs Session Storage vs Local Storage
 
+El **Local Storage**: tiene un almacenamiento de máximo 5 MB, la información almacenada aquí no se va con cada request que hacemos al servidor, estó nos ayuda a reducir la información entre cliente y servidor, la información que esta almacenada en el local storage persiste aunque cerremos la ventana de nuestro navegador, estó quiere decir que cuando volvemos a nuestro navegador la información la vamos a encontrar ahí.
+
+El **Session Storage**: es similar al _Local Storage_ solo que la información está disponible por tab o por window, esto quiere decir que apenas cerremos un tab o un window la información deja de persistir al igual solo la información que almacenamos en cada tab está disponible en ese mismo tab. 
+
+Las **cookies** solo tienen un almacenamiento de 4KB, lo interesante de las cookies es que si se les puede establecer un tiempo de expiración.
+
+Para el _Local Storags_ o _Session Storage_ esto lo tendríamos que hacer programaticamente con Javascript. 
+
+Una de las desventajas que tienen las cookies es que por cada petición que se haga al servidor sea de imagenes, html, etc. 
+
+**Las cookies van adjuntas a la petición esto ocaciona un gran consumo de datos cada vez que se hacen las peticiones**.
+
+Finalmente una de sus ventajas es que las cookies se pueden hacer seguras mediante un flag llamado ``htpp-only`` eso permite que la información de la cookie solo sea accedida y modificada en el servidor. 
+
+Finalmente te preguntaras: _¿Cuando debemos usar el uno o el otro?_
+
+- Si la información no es sensible podemos almacenarla en _Local Storage_ o en _Session Storage_.
+- Si la información es medianamente sensible como por ejemplo: nombres de usuario o algunos terminos que puedan identificar al usuario, lo más recomendado es usar el _Session Storage_.
+- Finalmente si la información es muy sensible como contraseñas o JSON Web Tokens, lo más recomendado es almacenarlo en una cookie pero siempre teniendo en cuenta el flag ``http-only``.
+
+Vamos a ver unos ejemplo de como se comporta Local Storage y Session Storage en el navegador.
+
+La menera en como podemos acceder a la API de WebStorage y SessionStorage es mediante la palabra ``sessionStorage`` está tienen 2 métodos, uno que es ``setItem`` donde podemos especificar con que **key** queremos almacenar nuestra información, en esté ejemplo vamos a almacenar en el key 'hello' otro string.
+
+```js
+sessionStorage.setItem('hello', 'temporary world');
+```
+
+Muy similar al _Local Storage_ mediante la palabra ``localStorage``
+
+```js
+localStorage.setItem('hello', 'world');
+```
+
+Si nos fijamos en la aplicación en el ``Local Storage`` podemos ver que está aquí la palabra ``hello world``, mientras que en el ``sessionStorage`` está la palabra  ``'hello', 'temporary world'``. Si nosotros quisieramos acceder a está información lo podemos hacer mediante ``sessionStorage.getItem('hello');`` es parecido con el _Local Storage_ ``localStorages.getItem('hello');``.
+
+Fijense que estó lo hicimos desde un ``tab`` abierto en el navegador, y debido que lo hemos almacenado todo en el _Session Storage_, solo va ha ser almacenado en esté tab, esto quiere decir que si lo cierro y en otro tab me voy a Aplication veremos que en el _Session Storage_ ya no hay nada, pero si me voy al _Local Storage_ todavía está percisitiendo el key ``'hello': 'world'``.
+
+Está es la manera en como podemos usar ``Session Storage`` y ``Local Storage`` en el navegador.
+
+Challenge: Discutir si fueramos a implementar autenticación que opción entre Cookies y Web Storage sería ideal.
+
+_Usaría Cookies para guardar la información sensible, y Web Storage para almacenar otra información no sensible. Además la web storage se crea desde el lado del cliente y no del lado de servidor. Cookies definitivamente._
 
 
 
