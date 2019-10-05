@@ -698,7 +698,7 @@ Otra librería que necesitamos instalar pero esta vez en modo desarrollo es una 
 Lo otro que necesitamos para nuestros scripts que vamos  ejecutar más adelante y es donde precisamente vamos a utilizar nuestra librería chalk, es agregar en nuestro archivo ``.env`` y ``.env.example`` las siguientes variables de entorno:
 
 Por defecto vamos a agregar los siguientes valores, igual ustedes pueden agregar algún otro.
-```
+``
 # USERS
 DEFAULT_ADMIN_PASSWORD=root
 DEFAULT_USER_PASSWORD=secret
@@ -723,14 +723,283 @@ ADMIN_API_KEY_TOKEN=
 
 Nos aseguramos que nuestro archivo ``.env.example`` no tenga ningun valor porque esto es la referencia que va ha usar el desarrollador para llenar su archivo ``.env``, procedemos a copiar está misma configuración en nuestro archivo de configuración de variables de entorno.
 
-```
+``
   defaultAdminPassword: process.env.DEFAULT_ADMIN_PASSWORD,
   defaultUserPassword: process.env.DEFAULT_USER_PASSWORD,
   authJwtSecret: process.env.AUTH_JWT_SECRET,
   publicApiKeyToken: process.env.PUBLIC_API_KEY_TOKEN,
   adminApiKeyToken: process.env.ADMIN_API_KEY_TOKEN
-```
+``
 La estrategia que ocupe en VS code es agregar el cursos al final de la linea, copie y pegue y use una librería para convertir los strings a camel Case.
 
 Teniendo en cuenta estos archivo de configuración lo que voy a hacer es copiar unos scipts que yo cree previamente, los voy a pegar en mi API Server
+
+Script para agregar peliculas usando nuestros mocks
+
+```js
+// DEBUG=app:* node scripts/mongo/seedMovies.js
+
+const chalk = require('chalk');
+const debug = require('debug')('app:scripts:movies');
+const MongoLib = require('../../lib/mongo');
+const { moviesMock } = require('../../utils/mocks/movies');
+
+async function seedMovies() {
+  try {
+    const mongoDB = new MongoLib();
+
+    const promises = moviesMock.map(async movie => {
+      await mongoDB.create('movies', movie);
+    });
+
+    await Promise.all(promises);
+    debug(chalk.green(`${promises.length} movies have been created succesfully`));
+    return process.exit(0);
+  } catch (err) {
+    debug(chalk.red(err));
+    process.exit(1);
+  }
+}
+
+seedMovies();
+```
+
+Scripts para crear Usuarios
+
+```js
+// DEBUG=app:* node scripts/mongo/seedUsers.js
+
+const bcrypt = require('bcrypt');
+const chalk = require('chalk');
+const debug = require('debug')('app:scripts:users');
+const MongoLib = require('../../lib/mongo');
+const { config } = require('../../config/index');
+
+const users = [
+  {
+    email: 'root@undefined.sh',
+    name: 'ROOT',
+    password: config.defaultAdminPassword,
+    isAdmin: true
+  },
+  {
+    email: 'jose@undefined.sh',
+    name: 'Jose María',
+    password: config.defaultUserPassword
+  },
+  {
+    email: 'maria@undefined.sh',
+    name: 'María Jose',
+    password: config.defaultAdminPassword
+  }
+];
+
+async function createUser(mongoDB, user) {
+  const { name, email, password, isAdmin } = user;
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const userId = await mongoDB.create('users', {
+    name,
+    email,
+    password: hashedPassword,
+    isAdmin: Boolean(isAdmin)
+  });
+
+  return userId;
+}
+
+async function seedUsers() {
+  try {
+    const mongoDB = new MongoLib();
+
+    const promises = users.map(async user => {
+      const userId = await createUser(mongoDB, user);
+      debug(chalk.green('User created with id: ', userId));
+    });
+
+    await Promise.all(promises);
+    return process.exit(0);
+  } catch (err) {
+    debug(chalk.red(err));
+    return process.exit(1);
+  }
+}
+
+seedUsers();
+```
+
+Script para crear los API KEYS
+
+```js
+// DEBUG=app:* node scripts/mongo/seedApiKeys.js
+
+const chalk = require('chalk');
+const debug = require('debug')('app:scripts:api-keys');
+const crypto = require('crypto');
+const MongoLib = require('../../lib/mongo');
+
+const adminScopes = [
+  'signin:auth',
+  'signup:auth',
+  'read:movies',
+  'create:movies',
+  'update:movies',
+  'delete:movies',
+  'read:user-movies',
+  'create:user-movies',
+  'delete:user-movies'
+];  
+
+const publicScopes = [
+  'signin:auth',
+  'signup:auth',
+  'read:movies',
+  'read:user-movies',
+  'create:user-movies',
+  'delete:user-movies'
+];
+
+const apiKeys = [
+  {
+    token: generateRandomToken(),
+    scopes: adminScopes
+  },
+  {
+    token: generateRandomToken(),
+    scopes: publicScopes
+  }
+];
+
+function generateRandomToken() {
+  const buffer = crypto.randomBytes(32);
+  return buffer.toString('hex');
+}
+
+async function seedApiKeys() {
+  try {
+    const mongoDB = new MongoLib();
+
+    const promises = apiKeys.map(async apiKey => {
+      await mongoDB.create('api-keys', apiKey)
+    });
+
+    await Promise.all(promises);
+    debug(chalk.green(`${promises.length} api-keys have been generated succesfully`));
+    return process.exit(0);
+  } catch (err) {
+    debug(chalk.red(err));
+    process.exit(1);
+  }
+}
+
+seedApiKeys();
+```
+
+Los API KEYS los necesitamos en nuestras variables de entorno, por lo que una vez creados nuestros api keys en la base de datos de mongo, procedemos a copiarlos y incluirlos en nuestro archivo ``.env``
+
+De está manera ya hemos creado una serie de peliculas, unos usuarios y los API TOKENS necesarios donde vamos a hacer uso de nuestra estrategia de autenticación con passport.js 
+
+## Implementación de BasicStrategy con Passport.js
+
+En esta clase aprenderás como implementar estrategias de autenticación haciendo uso de Passport.js. Las estrategias de autenticación nos sirven para determinar como nos vamos a autenticar, haciendo uso de estas estrategias en las diferentes rutas y así definir de donde saldra el usuario que vamos a usar de ahí en adelante, vamos a verlo como se hace en el código.
+
+1. Vamos a crear una nueva carpeta dentro de ``utils`` llamada ``auth/strategies/basic.js``, aquí es donde vamos a implementar nuestra estrategia de tipo Basic.
+
+```js
+const passport = require('passport');
+const { BasicStrategy } = require('passport-http');
+const boom = require('@hapi/boom');
+const bcrypt = require('bcrypt');
+
+const UsersService = require('../../../services/users');
+
+// para implementar la estrategia hacemos uso de Passport.use
+passport.use(new BasicStrategy(async (email, password, cb) => {
+  const userService = new UsersService();
+
+  // vamos a verificar si el usurio existe o no
+  try {
+    const user = await userService.getUser({ email });
+
+    if (!user) {
+      return cb(boom.unauthorized(), false);
+    }
+
+    if (!await bcrypt.compare(passport, user.password)) {
+      return cb(boom.unauthorized(), false);
+    }
+
+    // antes de la validación, eliminamos el password del objeto user
+    // así nos aseguramos que ahí en adelante en el uso de la aplicación no sea visible
+    // el password del usuario
+    delete user.password;
+
+    return cb(null, user);
+
+  } catch (err) {
+    
+    return cb(err);
+  }
+}));
+```
+
+Con esto ya tenemos implementada nuestra estrategia Basic, esto quiere decir que cuando se la agreguemos como middleware a una ruta, si hacen una petición de una autenticación basic, va ha pode extraer a traves de email y password, el usuario y apartir de ahi definir quien está autenticado en nuestra aplicación.
+
+## Implementación de Strategy y ExtractJwt con Passport.js
+
+Vamos a implementar ahora la estrategia de JWT donde recibiremos un JWT y apartir del token decodificado buscaremos al usuario.
+
+1. Creamos un nuevo archivo llamado ``jwt.js`` dentro de nuestra carpeta de ``strategies``
+
+```js
+const passport = require('passport');
+const { Strategy, ExtractJwt } = require('passport-jwt');
+const boom = require('@hapi/boom');
+
+/**
+ * apartir de nuestro UserServices vamos usar el método para buscar al usuario
+ * apartir de email que extraigamos del JWT
+ */
+const UserSerivice = require('../../../services/users');
+// con nuestro config haremos saber a la estrategia con que secret fue firmado nuestro JWT
+// y para que verifique que es complemente valido.
+const { config } = require('../../../config/index');
+
+// definimos nuestra nueva Strategia
+passport.use(
+  /* recibe la firma con el que fue firmado el token 
+  y la especificación de donde sacamos el JWT
+  */ 
+  new Strategy(
+    {
+      secretOrKey: config.authJwtSecret,
+      // especificamos que lo sacamos del Header
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken()
+    },
+    // recibe el payload del token ya decodificado y el cb 
+    // por si encotramos un usuario o debemos de devolver un error.
+    async function (tokenPayload, cb) {
+      const userSerivice = new UserSerivice();
+
+      try {
+        // buscamos al usuario en la Collection USERS con su atributo EMAIL
+        const user = await userSerivice.getUser({ email: tokenPayload.email });
+
+        if (!user) {
+          return cb(boom.unauthorized(), false);
+        }
+
+        delete user.password;
+        // si lo encontramos devolvemos la información del usuario 
+        // junto con los scopes o permisos que esté tiene.
+        cb(null, { ...user, scopes: tokenPayload.scopes });
+
+
+      } catch (err) {
+        cb(err);
+      }
+    }
+  )
+);
+```
 
