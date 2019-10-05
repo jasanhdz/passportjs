@@ -682,4 +682,55 @@ Si nosotros copiamos el Mongo URI desde Mongo Atlas podemos conectarnos facilmen
   <img src="./assets/mongodb-compass.jpg" alt="mongo compass">
 </div>
 
+## Configuración de Passport.js
+
+En está clase vamos a explorar la configuración inicial de passport.js. PassportJS es un middleware para express que nos permite implementar distitas estrategias de autenticación de una manera muy fácil y simple.
+
+1. Primero vamos a instalar nuestras dependencias 
+``npm i passport jsonwebtoken passport-http passport-jwt``
+
+**passport-http:** para implementar la estrategia basic de passport
+**passport-jwt:** para implementar la estrategia de JWT
+
+Otra librería que necesitamos instalar pero esta vez en modo desarrollo es una librería que se llamá chalk que lo que permite es pintar colores en la terminal.
+``npm i -D chalk``
+
+Lo otro que necesitamos para nuestros scripts que vamos  ejecutar más adelante y es donde precisamente vamos a utilizar nuestra librería chalk, es agregar en nuestro archivo ``.env`` y ``.env.example`` las siguientes variables de entorno:
+
+Por defecto vamos a agregar los siguientes valores, igual ustedes pueden agregar algún otro.
+```
+# USERS
+DEFAULT_ADMIN_PASSWORD=root
+DEFAULT_USER_PASSWORD=secret
+``
+
+Estás variables de entorno van ha ser necesarias para cuando estemos incertando nuestros usuarios iniciales, no estemos definiendo un password por defecto en el código, si no que sea un password diferente para cada aplicación que estemos creado, en esté caso vamos a generar un password por defecto para el administrador y un password por defecto para estos usuarios iniciales.
+
+Lo otro que vamos a necesitar es definir el secret que vamos a necesitar para firmar nuestros JWT, esté secret si lo debería sacar de una página que se llama: [keygen.io](https://keygen.io/). Está página lo que nos permite es definir un key de base 264 bits, nosotros vamos a buscar nuestro string de ``256 bits``, lo copiamos y en nuestro código lo agregamos. 
+
+``
+# AUTH
+AUTH_JWT_SECRET=FC6xnhTSEKlt0mNHjw4fucpzqg2e5M9B
+``
+
+Otra cosa que vamos a definir es cuales van a ser sus API_KEYS, recuerden que nuestros API_KEY es lo que nos va ha permitir definir que cuando haya un login con alguno de nuestro clientes, es decir el Render-Server o nuestro cliente Administrativo, le otorge los permisos. En esté caso esos API_KEYS van ha ser generados aleatoriamente apartir de nuestros scripts, teniendo en cuenta estas variables de entorno nos aseguramos de tenerlas en nuestro archivo ``.env``.
+
+``
+# API KEY
+PUBLIC_API_KEY_TOKEN=
+ADMIN_API_KEY_TOKEN=
+``
+
+Nos aseguramos que nuestro archivo ``.env.example`` no tenga ningun valor porque esto es la referencia que va ha usar el desarrollador para llenar su archivo ``.env``, procedemos a copiar está misma configuración en nuestro archivo de configuración de variables de entorno.
+
+```
+  defaultAdminPassword: process.env.DEFAULT_ADMIN_PASSWORD,
+  defaultUserPassword: process.env.DEFAULT_USER_PASSWORD,
+  authJwtSecret: process.env.AUTH_JWT_SECRET,
+  publicApiKeyToken: process.env.PUBLIC_API_KEY_TOKEN,
+  adminApiKeyToken: process.env.ADMIN_API_KEY_TOKEN
+```
+La estrategia que ocupe en VS code es agregar el cursos al final de la linea, copie y pegue y use una librería para convertir los strings a camel Case.
+
+Teniendo en cuenta estos archivo de configuración lo que voy a hacer es copiar unos scipts que yo cree previamente, los voy a pegar en mi API Server
 
