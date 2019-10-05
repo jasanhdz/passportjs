@@ -4,9 +4,9 @@ const UserMoviesService = require('../services/userMovies');
 const validationHandler = require('../utils/middleware/validationHandler');
 
 // importamos los schemas para generar la validation
-const { movieIdSchema } = require('../utils/schemas/movies'); // eslint-disable-line
+const { movieIdSchema } = require('../utils/schemas/movies');
 const { userIdSchema } = require('../utils/schemas/users');
-const { createUserMovieShema } = require('../utils/schemas/userMovies'); // eslint-disable-line
+const { createUserMovieShema } = require('../utils/schemas/userMovies');
 
 function userMoviesApi(app) {
   const router = express.Router();
@@ -26,6 +26,49 @@ function userMoviesApi(app) {
         res.status(200).json({
           data: userMovies,
           message: 'use movies listed'
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    '/',
+    validationHandler(createUserMovieShema),
+    async (req, res, next) => {
+      const { body: userMovie } = req;
+
+      try {
+        // vamos a recibir
+        const createUserMovieId = await userMoviesService.createUserMovie({
+          userMovie
+        });
+
+        res.status(201).json({
+          data: createUserMovieId,
+          message: 'user movie created'
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.delete(
+    '/:userMovieId',
+    validationHandler({ userMovieId: movieIdSchema }, 'params'),
+    async (req, res, next) => {
+      const { userMovieId } = req.params;
+
+      try {
+        const deleteUserMovieId = await userMoviesService.deleteUserMovie({
+          userMovieId
+        });
+
+        res.status(200).json({
+          data: deleteUserMovieId,
+          message: 'user movie deleted'
         });
       } catch (err) {
         next(err);

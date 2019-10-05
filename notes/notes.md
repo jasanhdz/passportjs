@@ -369,6 +369,317 @@ Mientras que el Render Server va ha utilizar una API Token con permisos público
 
 De está manera en las peticiónes siguientes nuestro Render Server o Admin Client con el Access Token que fue generado va a poder consumir los recursos del API Token. Las Single Pages App que va ha estar construida con: React, Vue o Angular, pero en el caso de la escuela de Javascript va ha estar construida con React. La manera en como se va ha comunicar con nuestro API Server va ha ser atravez del Render Server que va ha ser de Proxy, para está arquitectura es muy importante que la SPA tenga un servidor porque toda la comunicación que sucede de los Access Token mediante el API Server, debe ocurrir en el Servidor. 
 
-Si tu no tienes un Render-Server es necesario que crees un Server que haga de Proxy entre la SPA y el API Server. La manera en como la SPA se va ha comunicar con el API Server es mediante una cookie que va ha tener el Access Token del Render Server. Vamos a explorar en el código como está construido el API Server que fue hecho en el repositorio del [backendnodejs](https://github.com/JasanHdz/backendnodejs) 
+Si tu no tienes un Render-Server es necesario que crees un Server que haga de Proxy entre la SPA y el API Server. La manera en como la SPA se va ha comunicar con el API Server es mediante una cookie que va ha tener el Access Token del Render Server. Vamos a explorar en el código como está construido el API Server que fue hecho en el repositorio del [backendnodejs](https://github.com/JasanHdz/backendnodejs) y también vamos a integrarlo.
+
+El API Server es un proyecto en express que tiene implementado una ruta de peliculas, la ruta de peliculas tiene implentado los diferentes endpoints para poder listar las peliculas: getAll, getId, createMovie, y deleteMovie, además de que el proyecto tiene implementado toda una capa de validación para asegurarnos que los datos que enviemos sean correctos.
+
+La responsabilidad de las rutas, en las rutas en esté caso es recibir los datos y devolver los datos de las peliculas, pero donde realmente ocurre la lógica de negocio es en nuestra capa de Servicios que tiene implementado muy similar todo el sistema CRUD.
+
+La capa de servicios lo que llamá es la capa de Mongo donde hemos implementado una pequeña librería que atravez de la collection implementa los diferentes métodos de está librería de Mongo.
+
+Por ahora vamos a levantar el proyecto de ``movies-api`` y hacer unos llamados con postman a los diferentes métodos CRUD para verificar sus respuestas.
+
+desarrollo ``npm run dev``
+production ``npm run start``
+
+Es muy probable que tengas que eliminar la carpeta node_modules y volver a correr el comando ``npm install``
+
+## Agregando coleción de usuarios
+
+En está clase vamos a agregar el esquema de los usuarios y el servicio de los usuarios y vamos ver como lo podemos hacer en el código.
+
+1. Vamos a crear un nuevo schema en nuestra carpeta``/utils/schemas/users.js``, aquí lo que vamos a hacer es requerir una librería que se llama **joi**, está librería lo que nos permite es definir el schema que va ha ser usado en la collection de usuarios.
+
+```js
+const joi = require('@hapi/joi');
+
+const userIdSchema = joi.string().regex(/^[0-9a-fA-F]{24}$/);
+
+const createUserSchema = {
+  name: joi.string().max(100).required(),
+  email: joi.string().email().required(),
+  password: joi.string().required(),
+  isAdmin: joi.boolean()
+};
+
+module.exports = {
+  userIdSchema,
+  createUserSchema
+};
+```
+
+2. Ahora nos disponemos a crear el servicio, para ello nos vamos a ir a nuestra carpeta de ``services/users.js``;
+
+```js
+// librería de mongo, se encarga de llamar los diferentes métodos de mongo
+const MongoLib = require('../lib/mongo');
+// se encarga de crear password en modo Hash
+const bcrypt = require('bcrypt');
+
+class UsersService {
+  constructor() {
+    this.collection = 'users';
+    this.mongoDB = new MongoLib();
+  }
+
+  // recibe un email y apartir de aquí buscamos a ese usuario en la DB
+  async getUser({ email }) {
+    const [user] = await this.mongoDB.getAll(this.collection, { email });
+    return user;
+  }
+
+  // creamos el usuario
+  async createUser({ user }) {
+    const { name, email, password } = user;
+    // nos crea un password en modo hash
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const createUserId = await this.mongoDB.create(this.collection, {
+      name,
+      email,
+      password: hashedPassword
+    });
+
+    return createUserId;
+  }
+}
+
+module.exports = UsersService;
+```
+
+## Agregando colección de películas de usuario
+
+En la clase anterior agregamos el servicio de los usuarios, esto nos va ha permitir obtener usuarios de la base de datos. Ahora vamos a agregar el schema, la ruta y el servicio de las peliculas del usuario.
+
+Esta configuración nos servirá más adelante cuando un usuario cuando un usuario autentique y agregue una pelicula a su lista, lo pueda ver reflejado en la aplicación. 
+
+Procedemos a realizarlo en el código:
+
+1. Vamos a ``utils/schemas/`` y vamos a crear el schema que se va a llamar _userMovies_, esté eschema lo que nos permite es que cuando hagamos llamado a nuestros endpoints podamos tener el formato correcto de estos endpoints.
+
+```js
+const joi = require('@hapi/joi');
+
+const { movieIdSchema } = require('./movies');
+const { userIdSchema } = require('./users');
+
+// schema de las peliculas de usuario
+
+const userMovieIdSchema = joi.string().regex(/^[0-9a-fA-F]{24}$/);
+
+// creamos el schema de una pelicula de usuario
+
+const createUserMovieShema = {
+  userId: userIdSchema,
+  movieId: movieIdSchema
+}
+
+module.exports = {
+  userMovieIdSchema,
+  createUserMovieShema
+};
+```
+
+2. Ahora vamos a crear un servicio, para eso vamos a la carpeta de ``services`` y vamos a crear un servicio que se va ha llamar ``userMovies.js``
+
+```js
+const Mongo = require('../lib/mongo');
+
+class UserMoviesService {
+  constructor() {
+    this.collection = 'user-movies';
+    this.mongoDB = new Mongo();
+  }
+}
+```
+Como los usuarios de las peliculas van a ser manipulados de diferentes maneras, vamos a crear unos métodos que serán para obtener las peliculas del usuario, apartir de un userId, también vamos a tener el método que nos va ha permitir crear una pelicula del usuario, esto quiere decir cuando el usuario quiera agregar una pelicula a su lista de favoritos, y finalmente el usuario también va ha poder eliminar una pelicula de su lista de favoritos.
+
+```js
+const Mongo = require('../lib/mongo');
+
+class UserMoviesService {
+  constructor() {
+    this.collection = 'user-movies';
+    this.mongoDB = new Mongo();
+  }
+
+  async getUserMovies({ userId }) {
+    const query = userId && { userId };
+    const userMovies = await this.mongoDB.getAll(this.collection, query);
+
+    return userMovies || [];
+  }
+
+  async createUserMovie({ userMovie }) {
+    const createdUserMovieId = await this.mongoDB.create(this.collection, userMovie);
+    return createdUserMovieId;
+  }
+
+  async deleteUserMovie({ userMovieId }) {
+    const deleteUserMovieId = await this.mongoDB.delete(this.collection, userMovieId);
+    return deleteUserMovieId;
+  }
+
+}
+
+module.exports = UserMoviesService;
+```
+
+Con nuestro servicio ya implementado vamos a implementar la ruta que le da manejo ha esté servicio, vamos a implemenar la ruta que le da manejo ha esté servicio.
+
+3. En la carpeta de ``routes`` vamos a crear una nueva ruta que se va ha llamar ``userMovies.js``
+
+Despues de crear nuestro archivo ``userMovies.js`` en nuestra carpeta de ``routes`` pasamos a implementarlo haciendo uso de los schemas y servicios que creamos.
+
+```js
+const express = require('express');
+
+const UserMoviesService = require('../services/userMovies');
+const validationHandler = require('../utils/middleware/validationHandler');
+
+// importamos los schemas para generar la validation
+const { movieIdSchema } = require('../utils/schemas/movies');
+const { userIdSchema } = require('../utils/schemas/users');
+const { createUserMovieShema } = require('../utils/schemas/userMovies');
+
+function userMoviesApi(app) {
+  const router = express.Router();
+  app.use('/api/user-movies/', router);
+
+  const userMoviesService = new UserMoviesService();
+
+  router.get(
+    '/',
+    validationHandler({ userId: userIdSchema }, 'query'),
+    async (req, res, next) => {
+      const { userId } = req.query;
+
+      try {
+        const userMovies = await userMoviesService.getUserMovies({ userId });
+
+        res.status(200).json({
+          data: userMovies,
+          message: 'use movies listed'
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+}
+```
+
+## Implementando el POST y DELETE de las peliculas de usuario
+
+En está clase vamos a continuar con la implementación de las rutas del usuario, esn esta ocación vamos a hacer la implementación de la creación de las peliculas de usuario y la implementación de la eliminación de las peliculas del usuario.
+
+Como ya tenemos nuestro endpoint que nos permite listar las peliculas del usuario, ahora vamos a crear un endpoint, que se encargue de listar las peliculas del usuario.
+
+```js
+const express = require('express');
+
+const UserMoviesService = require('../services/userMovies');
+const validationHandler = require('../utils/middleware/validationHandler');
+
+// importamos los schemas para generar la validation
+const { movieIdSchema } = require('../utils/schemas/movies');
+const { userIdSchema } = require('../utils/schemas/users');
+const { createUserMovieShema } = require('../utils/schemas/userMovies');
+
+function userMoviesApi(app) {
+  const router = express.Router();
+  app.use('/api/user-movies/', router);
+
+  const userMoviesService = new UserMoviesService();
+
+  router.get(
+    '/',
+    validationHandler({ userId: userIdSchema }, 'query'),
+    async (req, res, next) => {
+      const { userId } = req.query;
+
+      try {
+        const userMovies = await userMoviesService.getUserMovies({ userId });
+
+        res.status(200).json({
+          data: userMovies,
+          message: 'use movies listed'
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    '/',
+    validationHandler(createUserMovieShema),
+    async (req, res, next) => {
+      const { body: userMovie } = req;
+
+      try {
+        // vamos a recibir
+        const createUserMovieId = await userMoviesService.createUserMovie({
+          userMovie
+        });
+
+        res.status(201).json({
+          data: createUserMovieId,
+          message: 'user movie created'
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.delete(
+    '/:userMovieId',
+    validationHandler({ userMovieId: movieIdSchema }, 'params'),
+    async (req, res, next) => {
+      const { userMovieId } = req.params;
+
+      try {
+        const deleteUserMovieId = await userMoviesService.deleteUserMovie({
+          userMovieId
+        });
+
+        res.status(200).json({
+          data: deleteUserMovieId,
+          message: 'user movie deleted'
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+}
+
+module.exports = userMoviesApi;
+```
+
+Ahora para poder usar nuestra ruta, debemos ir a nuestro archivo ``index.js`` de nuestro proyecto y aquí vamos a hacer uso de nuestra ruta.
+
+## Como conectarnos a una base de datos
+
+**MongoDB Compass** es un cliente con interfaz gráfica que nos permiten conectarnos a nuestras instancias de Mongo DB y manipularlas de una manera más fácil. Con este cliente nos podemos conectar a una instancia de cualquier servidor incluso una instancia de MongoDB Atlas.
+
+### Conexión usando MongoDB Compass
+
+Si nosotros copiamos el Mongo URI desde Mongo Atlas podemos conectarnos facilmente con MongoDB Compass:
+
+1. Iniciamos sesion en MongoDB Atlas https://www.mongodb.com/cloud/atlas
+2. Nos vamos a la sección de Clusters en el menu lateral izquierdo.
+3. Seleccionamos connect en nuestro cluster sandbox.
+4. Seleccionamos la opción Connect with MongoDB Compass.
+5. Si no tenemos MongoDB Compass instalado, podemos descargarlo desde alli. Si ya lo tienes instalado continua con el paso 5.
+6. Le damos click en el boton copy para copiar el Mongo URI.
+7. Abrimos MongoDB Compass e inmediatamente va a reconocer nuestra URI que tenemos en el portapapeles.
+8. Hacemos click en yes para que nos cree una nueva conexión, pero es necesario introduccir el password del usuario de la base de datos.
+9. Podemos ponerle un nombre favorito y darle en Create favorite y luego en Connect.
+
+<div align="center">
+  <img src="./assets/mongodb-compass.jpg" alt="mongo compass">
+</div>
 
 
