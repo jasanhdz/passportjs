@@ -1111,5 +1111,193 @@ module.exports = authApi;
 
 4. Levantamos el servidor y toca ir a probar nuestra ruta de signIn usando Postman.
 
-Vamos a hacer un request de tipo POST a la ruta ``localhost:300/api/auth/sign-in/`` en el vamos a hacer una ``Authorization`` de tipo ``Basic Auth``. Y en el body tenemos que enviar el API_TOKEN el cual copiamos de nuestro archivo ``.env``
+Vamos a hacer un request de tipo POST a la ruta 
+``localhost:300/api/auth/sign-in/`` en el vamos a hacer una ``Authorization`` de tipo ``Basic Auth``. Y en el body tenemos que enviar el API_TOKEN el cual copiamos de nuestro archivo ``.env``.
+
+## Implementación de nuestro Sign Up
+
+En el modulo pasado implementamos la ruta de Sign-in, al autenticar estamos devolviendo los scopes de api-token en el JWT, en esté modulo vamos a implementar la ruta de Sign-up.
+
+1. En nuestro archivo ``routes/auth.js`` vamos a importar el ``UsersService.js`` porque con esté vamos a usar el método para crear usuarios el cual está úbicado en la carpeta de ``services``, también como necesitamos validar que los datos del usuario son correctos vamos a importar el ``validationHandler.js`` que está en la ruta de ``../movies-api/utils/middleware/validationHandler`` y finalmente necesitamos el schema de crear usuario para lo cuál igual tenemos que importar el ``{createUserSchema} = require('../movies-api/utils/schemas/users')``.
+
+```js
+// vamos a implementar la creación de usuarios
+  router.post(
+    '/sign-up',
+    validationHandler(joi.object(createUserSchema)),
+    async (req, res, next) => {
+      // sacamos del body el user:
+      const { body: user } = req;
+
+      try {
+        // llamamos nuestro servicio de creación de usuario
+        const createUserId = await usersServices.createUser({ user });
+
+        res.status(201).json({
+          data: createUserId,
+          message: 'user created'
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+```
+
+2. Ahora vamos a Postman y creamos el usuario enviandolo por el body como un JSON.
+
+Cuando el usuario halla sido creado incluso podemos hacer un sign in para verificar que se hallá creado correctamente y nos devolverá el token con la información del usuario.
+
+## Protegiendo nuestras rutas con Passport.js 
+
+En esté modulo vamos a aprender como podemos proteger nuestras rutas de la API, haciendo uso de Passport.js.
+
+Lo que vamos a hacer es que vamos a proteger nuestras rutas de ``movies`` y ``userMovies``. Para eso vamos a importar nuestra estrategia de JWT, es bastante fácil poder proteger nuestras rutas, lo único que tenemos que hacer es hacer uso de passport y hacemos ``passport.autenticate`` en el vamos a definir que la estrategia que vamos a ocupar es ``jwt`` y definimos que la sessión va ha ser ``false``
+
+nuestra ruta movies quedaría de la siguiente manera:
+
+```js
+  router.get('/', passport.authenticate('jwt', { session: false }) ,async function (req, res, next) {
+    cacheResponse(res, FIVE_MINUTES_IN_SECONDS);
+    const { tags } = req.query;
+    try {
+      const movies = await moviesService.getMovies({ tags });
+      // throw new Error("Error getting movies");
+      res.status(200).json({
+        data: movies,
+        message: 'movies listed'
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+```
+
+Cuando importamos nuestra Strategy de JWT 
+```js
+require('../utils/auth/strategies/jwt');
+```
+Es donde estamos recibiendo un JWT que viene del authorization header, vamos a obtener el email del usuario y apartir de el vamos a buscarlo y devolverlo, en esta ocación no hay necesidad de implementar un Custom Callback, entonces lo único que hay que hacer es llamar a ``passport.authenticate`` definir la estrategia y esto funciona como un middleware. Apartir de ahí lo que vamos a hacer es agregar está misma linea a los otros EndPoits. 
+
+Con esto ya tenemos protegidas todas nuestras rutas, esto quiere decir que la única manera de acceder a ellas, es si tenemos un JWT valido.
+
+Vamos a hacer lo mismo para nuestras rutas de ``userMovies``
+```js
+// JWT Strategy
+require('../utils/auth/strategies/jwt');
+```
+
+Despues copiamos la misma linea de:
+
+```js
+passport.authenticate('jwt', {session: false}),
+```
+
+Que nos permite proteger las otras rutas.
+
+Ahora levantamos nuestro servidor en modo desarrollo y vamos a postman. Si ahora hacemos un GET movies desde postman ahora nos dice que no estamos autorizados, ahora tenemos que hacer sign-in para que nos devuelva un token y lo que debemos de hacer es que cada vez que queramos llamar nuestras rutas que ya estan protegidas, debemos de ir al tab de autorización, definir que vamos a autorizarnos con **Bearer Token** y agregar nuestro Access Token en el campo Token, de está manera si ahora llamo las rutas de las peliculas ahora si nos devuelve datos, y lo mismo pasa con las demás rutas a las que autenticamos usando ``passport.js`` 
+
+Con esto hemos cerrado prácticamente todo el ciclo de autenticación, ya tenemos todo el flujo de hacer Sign-in y tenemos todo el flujo de hacer Sign-up y finalmente tenemos protegidas nuestras rutas de la API.
+
+## Implementando recordar sesión
+
+Generalmente cuando queremos implementar la opción de recordar sesión para Express mediante passport, lo que hacemos es extender la expiración de la Cookie.
+
+En nuestra ruta de sign-in de nuestro render server hacemos las siguientes modificaciones:
+
+```js
+// Agregamos las variables de timpo en segundos
+const THIRTY_DAYS_IN_SEC = 2592000;
+const TWO_HOURS_IN_SEC = 7200;
+
+app.post("/auth/sign-in", async function(req, res, next) {
+  // Obtenemos el atributo rememberMe desde el cuerpo del request
+  const { rememberMe } = req.body;
+
+  passport.authenticate("basic", function(error, data) {
+    try {
+      if (error || !data) {
+        next(boom.unauthorized());
+      }
+
+      req.login(data, { session: false }, async function(error) {
+        if (error) {
+          next(error);
+        }
+
+        const { token, ...user } = data;
+
+        // Si el atributo rememberMe es verdadero la expiración será en 30 dias
+        // de lo contrario la expiración será en 2 horas
+        res.cookie("token", token, {
+          httpOnly: !config.dev,
+          secure: !config.dev,
+          maxAge: rememberMe ? THIRTY_DAYS_IN_SEC : TWO_HOURS_IN_SEC
+        });
+
+        res.status(200).json(user);
+      });
+    } catch (error) {
+      next(error);
+    }
+  })(req, res, next);
+});
+```
+
+## Middleware para el manejo de scopes
+
+En está clase crearemos un middleware que nos permitirá validar los scopes de las rutas.
+
+```js
+const boom = require('@hapi/boom');
+
+// esta funcion recibira los scopes permitidos para las rutas
+// pero lo que va ha devolver la función es un middleware
+function scopesValidationHandler(allowedScopes) {
+  return function (req, res, next) {
+    if (!req.user || (req.user && !req.user.scopes)) {
+      next(boom.unauthorized('Missing scopes'));
+    }
+
+    // si existe el usuario y tiene scopes, vamos a verificar si tienen acceso
+    const hasAccess = allowedScopes
+      .map(allowedScope => req.user.scopes.includes(allowedScope))
+      .find(allowed => Boolean(allowed));
+    
+    if (hasAccess) {
+      next();
+    } else {
+      next(boom.unauthorized('Insufficient scopes'));
+    }
+  }
+}
+
+module.exports = scopesValidationHandler;
+```
+
+Ahora nos dirigimos a nuestras rutas, y todas nuestras rutas deben ser validadas.
+
+```js
+const scopesValidationHandler = require('../utils/middleware/scopesValidationHandler');
+```
+
+Ahora debo definir los scopes de las diferentes rutas, despues de que verifico con el middleware de que está autenticado, entonces indico cuál es el scope necesario, para el de ``getMovies`` el scopes necesario es ``[read:movies]``, es decir si el usuario tiene el scope de ``[read:movies]`` podrá leer las peliculas, para el ``getMovieId`` necesita el mismo scope, para el ``createMovie`` necesita el scope de ``['create:movies']``, entonces fijense que si tenemos unos scopes públicos no vamos a poder consumir nuestra ruta de crear peliculas, luego del ``put o updateMovies`` necesitaríamos el scope de ``['update:movies']`` y para el endpoint de ``deleteMovies`` necesitaríamos el scope de ``['deleted:movies']``.
+
+Tanto ``passport.authenticate``, ``scopesValidationHandler`` y ``validationHandler`` son middlewares. El proposito de los middlewares es filtrar e intervenir el código ``request`` que viene desde la ruta o endpoint hasta que ya hacemos su funcionalidad y tratamos los suficientes datos, entonces esto nos permite en esté caso: validar la autenticación, despues validar que tenga los permisos necesarios, y por último validar que los datos esté correctos.
+
+Haremos lo mismo para nuestros datos de ``userMovies``.
+
+ejemplos de la implementación:
+
+```js
+scopesValidationHandler(['read:movies']),
+scopesValidationHandler(['create:movies']),
+scopesValidationHandler(['update:movies']),
+scopesValidationHandler(['delete:movies']),
+```
+
+Ahora levantamos el servidor en modo desarrollo y nos dirigiremos a postman a verificar que estó este funcionando correctamente. Antes de hacer request a nuestras diferentes rutas y verificar que nuestras variables de entorno para verficar que estemos ocupado la variable de entorno correcta.
+
+Vamos a agregar un 
+
 
