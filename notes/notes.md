@@ -914,33 +914,33 @@ const bcrypt = require('bcrypt');
 const UsersService = require('../../../services/users');
 
 // para implementar la estrategia hacemos uso de Passport.use
-passport.use(new BasicStrategy(async (email, password, cb) => {
-  const userService = new UsersService();
+passport.use(
+  new BasicStrategy(async (email, password, cb) => {
+    const userService = new UsersService();
 
-  // vamos a verificar si el usurio existe o no
-  try {
-    const user = await userService.getUser({ email });
+    // vamos a verificar si el usurio existe o no
+    try {
+      const user = await userService.getUser({ email });
 
-    if (!user) {
-      return cb(boom.unauthorized(), false);
+      if (!user) {
+        return cb(boom.unauthorized(), false);
+      }
+
+      if (!(await bcrypt.compare(password, user.password))) {
+        return cb(boom.unauthorized(), false);
+      }
+
+      // antes de la validación, eliminamos el password del objeto user
+      // así nos aseguramos que ahí en adelante en el uso de la aplicación no sea visible
+      // el password del usuario
+      delete user.password;
+
+      return cb(null, user);
+    } catch (err) {
+      return cb(err);
     }
-
-    if (!await bcrypt.compare(passport, user.password)) {
-      return cb(boom.unauthorized(), false);
-    }
-
-    // antes de la validación, eliminamos el password del objeto user
-    // así nos aseguramos que ahí en adelante en el uso de la aplicación no sea visible
-    // el password del usuario
-    delete user.password;
-
-    return cb(null, user);
-
-  } catch (err) {
-    
-    return cb(err);
-  }
-}));
+  })
+);
 ```
 
 Con esto ya tenemos implementada nuestra estrategia Basic, esto quiere decir que cuando se la agreguemos como middleware a una ruta, si hacen una petición de una autenticación basic, va ha pode extraer a traves de email y password, el usuario y apartir de ahi definir quien está autenticado en nuestra aplicación.
@@ -1002,4 +1002,114 @@ passport.use(
   )
 );
 ```
+
+## Implementación de nuestro Sign-in
+
+Ya que hemos implementado nuestras estrategias, ahora vamos a implementar la ruta de Sign In.
+
+1. Ante de implementar nuestra ruta debemos crear un nuevo servicio, llamado ``apiKeys.js``, esté servicio nos va ha permitir que apartir de un API-Key-Token podamos obtener los scopes que es requerido a la hora de hacer Sign In a la hora de firmar un JWT con los scopes correspondientes deacuerdo al API Token que nosotros enviemos.
+
+```js
+
+```
+
+2. Ahora creamos una nueva ruta que se va ha llamar ``auth.js``
+
+```js
+const express = require('express');
+const passport = require('passport');
+const boom = require('@hapi/boom');
+const jwt = require('jsonwebtoken');
+const ApiKeysService = require('../services/apiKeys');
+
+const { config } = require('../config/index');
+
+// Debemos hacer uso de nuestra Strategy Basic
+require('../utils/auth/strategies/basic');
+
+function authApi(app) {
+  const router = express.Router();
+  app.use('/api/auth', router);
+
+  const apiKeysService = new ApiKeysService();
+
+  router.post('/sign-in', async (req, res, next) => {
+    /** verificamos que del cuerpo venga un atributo que se llame apiKeyToken
+     * este es el token que le vamos a pasar el Sign In para determinar que clase de permiso
+     * vamos a firmar en el JWT que vamos a devolver
+     */
+    const { apiKeyToken } = req.body;
+    
+    // verificamos si no existe el token
+    if (!apiKeyToken) {
+      next(boom.unauthorized('apiKeyToken is required'), false);
+    }
+
+    // cuando ya tengamos el token, podemos implementar un custom Callback
+    // se va ha encargar de ubicar a nuestro usuario en nuestro request.user,
+    // en esté caso no nos interesa que úbique al usuario que encuentra en la ubicación basic
+    // nosotros lo que queremos es que nos devuelva un JWT Firmado.
+    passport.authenticate('basic', (err, user) => {
+      try {
+        if (err || !user) {
+          next(boom.unauthorized(), false);
+        }
+
+        // si exite el usuario, procedemos a implementar el req.login
+        // vamos definir que no vamos a implementar una session 
+        // recibimos un error en caso de que exista
+        req.login(user, { session: false }, async function (error) {
+          if (error) {
+            next(error);
+          }
+
+          // si no hay error procedemos a buscar nuestro API Key
+
+          const apiKey = await apiKeysService.getApiKey({ token: apiKeyToken });
+
+          if (!apiKey) {
+            next(boom.unauthorized());
+          }
+
+          // teniendo en cuenta el API Key procedemos a construir nuestro JWT 
+
+          const {
+            _id: id,
+            name,
+            email
+          } = user;
+
+
+          const payload = {
+            sub: id,
+            name,
+            email,
+            scopes: apiKey.scopes
+          }
+
+          const token = jwt.sign(payload, config.authJwtSecret, {
+            expiresIn: '15m'
+          });
+
+          return res.status(200).json({token, user: {id, name, email}})
+        });
+
+      } catch (err) {
+        next(err)
+      }
+      // como es un custom Callback, debemos hace un Clousure con la firma de la ruta.
+    })(req, res, next);
+
+
+  })
+}
+
+module.exports = authApi;
+```
+
+3. Ahora nos vamos a nuestro archivo ``index.js`` y agregamos la nueva ruta que acabamos de crear.
+
+4. Levantamos el servidor y toca ir a probar nuestra ruta de signIn usando Postman.
+
+Vamos a hacer un request de tipo POST a la ruta ``localhost:300/api/auth/sign-in/`` en el vamos a hacer una ``Authorization`` de tipo ``Basic Auth``. Y en el body tenemos que enviar el API_TOKEN el cual copiamos de nuestro archivo ``.env``
 
