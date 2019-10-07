@@ -1374,7 +1374,7 @@ const passport = require('passport');
 const { BasicStrategy } = require('passport-http');
 const boom = require('@hapi/boom');
 const axios = require('axios');
-const { config } = require('../../../config');
+const { config } = require('../../../config/index');
 
 // definimos nuestra nueva estrategia
 passport.use(
@@ -1382,25 +1382,25 @@ passport.use(
     try {
       const { data, status } = await axios({
         url: `${config.apiUrl}/api/auth/sign-in`,
-        method: "POST",
+        method: "post",
         auth: {
-          passport,
+          password,
           username: email
         },
         data: {
-          apiKeyToken: config.ApiKeyToken
+          apiKeyToken: config.apiKeyToken
         }
       });
 
       if (!data || status !== 200) {
-        return cb(boom.unauthorized(''), false);
+        return cb(boom.unauthorized("Fallo aquí chavos", false));
       }
 
       // la es respuesta es el token y la info del usuario
       return cb(null, data);
 
-    } catch (err) {
-      cb(err);
+    } catch (error) {
+      cb(error);
     }
   })
 );
@@ -1430,7 +1430,7 @@ app.post("/auth/sign-in", async function (req, res, next) {
   passport.authenticate("basic", async function (error, data) {
     try {
       if (error || !data) {
-        next(boom.unauthorized());
+        next(boom.unauthorized("Error la data viene vacía :("));
       }
 
       req.login(data, { session: false }, async function (error) {
@@ -1438,6 +1438,9 @@ app.post("/auth/sign-in", async function (req, res, next) {
           next(error);
         }
 
+        const { token , ...user } = data;
+
+      
         res.cookie("token", token, {
           httpOnly: !config.dev,
           secure: !config.dev
@@ -1456,14 +1459,14 @@ app.post("/auth/sign-up", async function (req, res, next) {
   try {
     await axios({
       url: `${config.apiUrl}/api/auth/sign-up`,
-      method: 'POST',
+      method: 'post',
       data: user
     });
 
     res.status(201).json({
       message: "User Created"
     });
-    
+
   } catch (error) {
     next(error);
   }
@@ -1487,10 +1490,10 @@ app.post('/user-movies', async function (req, res, next) {
     // van ha tener la cookie en el req. Es por eso que podemos sacar de las cookies el token
     // para llamar a nuestra API
 
-    const { data, token } = await axios({
+    const { data, status } = await axios({
       url: `${config.apiUrl}/api/user-movies/`,
       headers: { Authorization: `Bearer ${token}` },
-      method: 'POST',
+      method: 'post',
       data: userMovie
     });
 
@@ -1516,7 +1519,7 @@ app.delete("/user-movies/:userMovieId", async function (req, res, next) {
     // van ha tener la cookie en el req. Es por eso que podemos sacar de las cookies el token
     // para llamar a nuestra API
 
-    const { data, token } = await axios({
+    const { data, status } = await axios({
       url: `${config.apiUrl}/api/user-movies/${userMovieId}`,
       headers: { Authorization: `Bearer ${token}` },
       method: 'DELETE'
@@ -1536,5 +1539,7 @@ app.delete("/user-movies/:userMovieId", async function (req, res, next) {
 ```
 
 Ahora pasamos a revizar nuestros endpoints en postman, lo primero que debemos de hacer es levantar nuestros 2 servers. ¿Por qué los 2 servers? porque ahora no solo tenemos que levantar el render server, si no que también debemos levantar el Api Server.
+
+
 
 
