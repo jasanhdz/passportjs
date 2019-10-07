@@ -1298,6 +1298,243 @@ scopesValidationHandler(['delete:movies']),
 
 Ahora levantamos el servidor en modo desarrollo y nos dirigiremos a postman a verificar que estó este funcionando correctamente. Antes de hacer request a nuestras diferentes rutas y verificar que nuestras variables de entorno para verficar que estemos ocupado la variable de entorno correcta.
 
-Vamos a agregar un 
+## Configuración del Server Render
+
+En está clase vamos a explorar la configuración del render server. Recuerda que en clase de arquitectura del proyecto teníamos un diagrama donde teníamos que el API Server era consumido por 2 clientes, uno de esos clientes era el Admin Client que es el que usa los Scopes Administrativos y el otro cliente es el Render Server que usa los scopes públicos, en está clase vamos ver cual es la estructura base de esté Render Server.
+
+En el repositorio del curso hemos agregado una nueva carpeta llamada ``ssr-server`` eso significa ``server side render``. Está carpeta tiene unas nuevas variables de entorno que son: el puerto, la url del ``api-server`` y el 
+``PUBLIC_API_KEY_TOKEN``, esté API-Token debe ser exactamente igual al api-key token que tenemos en nuestra API. 
+
+Lo otro que hemos agregado a la configuración son estás mismas variables de entorno.
+
+```js
+require('dotenv').config();
+
+const config = {
+  dev: process.env.NODE_ENV !== 'production',
+  port: process.env.PORT || 8000,
+  apiUrl: process.env.API_URL,
+  ApiKeyToken: process.env.PUBLIC_API_KEY_TOKEN
+}
+
+module.exports = { config: config };
+```
+
+Apartir de ahí lo único que tenemos es un archivo ``index.js`` que levanta un servidor de express.
+
+```js
+const express = require('express');
+
+const { config } = require('./config/index');
+
+const app = express();
+
+// body parser
+app.use(express.json());
+
+app.post("/auth/sign-in", async function (req, res, next) {
+  
+});
+
+app.post("/auth/sign-up", async function (req, res, next) {
+  
+});
+
+app.get('/movies', async function (req, res, next) {
+  
+});
+
+app.post('/user-movies', async function (req, res, next) {
+  
+});
+
+app.delete("/user-movies/:userMovieId", async function (req, res, next) {
+  
+});
+
+app.listen(config.port, function () {
+  console.log(`Listening http://localhost:${config.port}`);
+});
+```
+
+Lo que vamos a hacer en esté proyecto es levantar las rutas de sign-in, sign-up, creación de las peliculas de usuario y eliminación de las peliculas de usuario, está 2 rutas van ha hacer la acción cuando el usuario en la interfaz gráfica agregue o elimine peliculas de su lista, lo que quedará pendiente será la opción de listar las peliculas, esto lo vamos a ver en el curso de **backend for fronted** de la escuela de JS. 
+
+Lo que podemos a intuir acá es que nosotros vamos a ocupar esté nuevo servidor como una especie de proxy, y todas estás llamadas van a ser llamadas a la API-Server y lo que vamos a hacer con el Sign-in es que el toke que nos regrese lo vamos a inyectar en una cookie y apartir de ahí las otras rutas van ha leer el valor de esa cookie, de está manera vamos a tener una forma muy segura en nuestra Single Pages App el JWT protegido.
+
+Con estó hemos explorado las bases de nuestro Render Server, recuerda que si quieres ver toda la implementación completa debes de ver el curso de ``Server Side Render con express`` de la escuela de Javascript, y que despues veas el el curso de ``Backend for frontend`` de la escuela de JS, donde verás la implementación de la ruta de peliculas.
+
+## Comunicación máquina a máquina 
+
+En esta clase vamos a implementar la estrategia de autenticación del sign-in y sign-up de nuestro Render Server.
+
+1. En nuestro proyecto del render server lo primero que vamos a hacer es crear un nuevo archivo para implementar nuestra estrategia _Basic_ lo crearemos en: ``utils/auth/strategies/basic.js``.
+
+```js
+const passport = require('passport');
+const { BasicStrategy } = require('passport-http');
+const boom = require('@hapi/boom');
+const axios = require('axios');
+const { config } = require('../../../config');
+
+// definimos nuestra nueva estrategia
+passport.use(
+  new BasicStrategy(async function (email, password, cb) {
+    try {
+      const { data, status } = await axios({
+        url: `${config.apiUrl}/api/auth/sign-in`,
+        method: "POST",
+        auth: {
+          passport,
+          username: email
+        },
+        data: {
+          apiKeyToken: config.ApiKeyToken
+        }
+      });
+
+      if (!data || status !== 200) {
+        return cb(boom.unauthorized(''), false);
+      }
+
+      // la es respuesta es el token y la info del usuario
+      return cb(null, data);
+
+    } catch (err) {
+      cb(err);
+    }
+  })
+);
+```
+
+También vamos a necesitar una nueva librería que se va ha llamar ``cookiesParser``, recuerden que en la configuración de nuestro proyecto, definimos una estructura básica en el ``packages.json`` aquí solo los estamos incluyendola.
+
+```js
+const express = require('express');
+const passport = require('passport');
+const boom = require('@hapi/boom');
+const cookieParser = require('cookie-parser');
+const axios = require('axios');
+
+const { config } = require('./config/index');
+
+const app = express();
+
+// middlewares
+app.use(express.json()); // body parser 
+app.use(cookieParser()); // cookie-parser
+
+// Basic Strategy
+require('./utils/auth/strategies/basic');
+
+app.post("/auth/sign-in", async function (req, res, next) {
+  passport.authenticate("basic", async function (error, data) {
+    try {
+      if (error || !data) {
+        next(boom.unauthorized());
+      }
+
+      req.login(data, { session: false }, async function (error) {
+        if (error) {
+          next(error);
+        }
+
+        res.cookie("token", token, {
+          httpOnly: !config.dev,
+          secure: !config.dev
+        });
+
+        res.status(200).json(user);
+      });
+    } catch (error) {
+      next(error);
+    }
+  })(req, res, next);
+});
+
+app.post("/auth/sign-up", async function (req, res, next) {
+  const { body: user } = req;
+  try {
+    await axios({
+      url: `${config.apiUrl}/api/auth/sign-up`,
+      method: 'POST',
+      data: user
+    });
+
+    res.status(201).json({
+      message: "User Created"
+    });
+    
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+## Implementación de las peliculas de usuario
+
+En está clase vamos a hacer la implementación de las rutas de las peliculas de usuario.
+
+Para ello nos dirigimos a nuestras rutas de movies de usuario.
+
+```JS
+app.post('/user-movies', async function (req, res, next) {
+  try {
+    const { body: userMovie } = req;
+    const { token } = req.cookies;
+
+    // cuando hacemos sign-in generamos un JWT que lo guardamos en una cookie,
+    // apartir de ahí los req que hagamos en las peliculas de usuarios, entonces
+    // van ha tener la cookie en el req. Es por eso que podemos sacar de las cookies el token
+    // para llamar a nuestra API
+
+    const { data, token } = await axios({
+      url: `${config.apiUrl}/api/user-movies/`,
+      headers: { Authorization: `Bearer ${token}` },
+      method: 'POST',
+      data: userMovie
+    });
+
+    if (status !== 201) {
+      return next(boom.badImplementation());
+    }
+
+    res.status(201).json(data);
+    
+    
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/user-movies/:userMovieId", async function (req, res, next) {
+  try {
+    const { userMovieId } = req.params;
+    const { token } = req.cookies;
+
+    // cuando hacemos sign-in generamos un JWT que lo guardamos en una cookie,
+    // apartir de ahí los req que hagamos en las peliculas de usuarios, entonces
+    // van ha tener la cookie en el req. Es por eso que podemos sacar de las cookies el token
+    // para llamar a nuestra API
+
+    const { data, token } = await axios({
+      url: `${config.apiUrl}/api/user-movies/${userMovieId}`,
+      headers: { Authorization: `Bearer ${token}` },
+      method: 'DELETE'
+    });
+
+    if (status !== 200) {
+      return next(boom.badImplementation());
+    }
+
+    res.status(200).json(data);
+    
+    
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+Ahora pasamos a revizar nuestros endpoints en postman, lo primero que debemos de hacer es levantar nuestros 2 servers. ¿Por qué los 2 servers? porque ahora no solo tenemos que levantar el render server, si no que también debemos levantar el Api Server.
 
 

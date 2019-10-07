@@ -8,7 +8,7 @@ const scopesValidationHandler = require('../utils/middleware/scopesValidationHan
 const { movieIdSchema } = require('../utils/schemas/movies');
 const { userIdSchema } = require('../utils/schemas/users');
 const { createUserMovieShema } = require('../utils/schemas/userMovies');
-
+const joi = require('@hapi/joi');
 // JWT Strategy
 require('../utils/auth/strategies/jwt');
 
@@ -22,7 +22,7 @@ function userMoviesApi(app) {
     '/',
     passport.authenticate('jwt', {session: false}),
     scopesValidationHandler(['read:user-movies']),
-    validationHandler({ userId: userIdSchema }, 'query'),
+    validationHandler(joi.object({ userId: userIdSchema }), 'query'),
     async (req, res, next) => {
       const { userId } = req.query;
 
@@ -43,7 +43,7 @@ function userMoviesApi(app) {
     '/',
     passport.authenticate('jwt', { session: false }),
     scopesValidationHandler(['create:user-movies']),
-    validationHandler(createUserMovieShema),
+    validationHandler(joi.object(createUserMovieShema)),
     async (req, res, next) => {
       const { body: userMovie } = req;
 
@@ -67,7 +67,7 @@ function userMoviesApi(app) {
     '/:userMovieId',
     passport.authenticate('jwt', { session: false }),
     scopesValidationHandler(['delete:user-movies']),
-    validationHandler({ userMovieId: movieIdSchema }, 'params'),
+    validationHandler(joi.object({ userMovieId: movieIdSchema }), 'params'),
     async (req, res, next) => {
       const { userMovieId } = req.params;
 

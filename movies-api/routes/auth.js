@@ -59,7 +59,7 @@ function authApi(app) {
           const apiKey = await apiKeysService.getApiKey({ token: apiKeyToken });
 
           if (!apiKey) {
-            next(boom.unauthorized());
+            next(boom.unauthorized("no llegaron los scopes"));
           }
 
           // teniendo en cuenta el API Key procedemos a construir nuestro JWT

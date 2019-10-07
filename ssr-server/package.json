@@ -1,0 +1,28 @@
+{
+  "name": "ssr-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "DEBUG=app* nodemon index"
+  },
+  "keywords": [
+    "server-side-render"
+  ],
+  "author": "Jasan A. Hernández Bautista<jasan814@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@hapi/boom": "8.0.1",
+    "axios": "0.19.0",
+    "cookie-parser": "1.4.4",
+    "dotenv": "8.1.0",
+    "express": "4.17.1",
+    "jsonwebtoken": "8.5.1",
+    "passport": "0.4.0",
+    "passport-http": "0.3.0",
+    "passport-jwt": "4.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.3"
+  }
+}
