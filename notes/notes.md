@@ -1542,4 +1542,44 @@ Ahora pasamos a revizar nuestros endpoints en postman, lo primero que debemos de
 
 
 
+## ¿Qué es OAuth 2.0?
+
+Estos estandares nos permiten implementar cosas como autenticación con redes sociales. 
+
+- [OAuth 2.0](): Es un estandart de la industria que nos permite implementar autorización, recuerda que ya conoces la diferencia entre **autorización** y **autenticación**. 
+
+
+<div align="center">
+  <img src="./assets/oauth.png" alt="oauth2.0">
+</div>
+
+Lo más importante para aprender a implementar OAuth es entender cuales son los roles envueltos en los flujos, en esté caso el primer rol sería el usuario **Resource Owner**, en esté caso podrías ser tú, luego tenemos el **Resource Server** que sería una API donde están tus recursos o tus datos, luego tenemos el aplication o el **Client** quien es que intentar acceder a estos recursos en nombre del usuario y finalmente tenemos el **Authorization Server** qué es quien se encarga de verificar la identidad del usuario. 
+
+<div align="center">
+  <img src="./assets/appclient-oauth.png" alt="oauth2.0">
+</div>
+
+El flujo empieza cuando la aplicación quiere hacer una Authorization Request, entonces tu como usuario tienes que permitirle a la aplicación acceder a tus recursos, esto lo hace mediante una Authorization Grant. La aplicación con esté Authorization Grant va ha la Autorization Server, el verifica que los datos son correctos y te crea un Access Token, el Access Token puede ser un token como cualquiera o podría ser un JWT, apartir de ahí la aplicación con ese Access Token puede hacer cualquier petición y obtener recursos en tu nombre, entonces el Resource Server que sería la API, lo que haría sería devolver los recursos protegidos, gracias a que tu le enviaste un Access Token.
+
+Aquí tenemos un ejemplo del mundo real:
+
+<div align="center">
+  <img src="./assets/oauth-exmaple.png" alt="Ejemplo de como funciona Oauth2.0">
+</div>
+
+_"supongamos que el cliente es tu hermano, tu hermano quiere acceder a la pelota que está en el closet, el closet sería el **Resource Server**, pero tú no te encuentras en casa, sin embargo tus padres se encuentran en casa, entonces el hermano lo que haría sería pedirte una autorización, tú lo que podrías enviar como **Autorization Grant** sería una carta donde tu hermano está permitido en obtener la pelota, tu hermano con esa carta lo que aría sería ir con el **Autorization Server** que serían tus padres, tus padres verifican que sea una carta con tu letra, y les darían las llaves en esté caso sería el **Access Token** ahora tu hermano con las llaves puede acceder al closet y obtener la pelota"_.
+
+
+## ¿Qué es OpenID Connect?
+
+Resulta que openID Connect es una capa de autenticación que funciona sobre la capa de Oauth. Lo que sucedio es que las compañias que estaban implementando Oauth para autenticar, estaban teniendo problemas de seguridad, **facebook** hace tiempo tuvo problemas donde podía suplantar la identidad porque estaban usando Access Token para hacer todo el proceso de Autenticación, entonces facebook tuvo que hacer unas soluciones sobre esa capa de Oauth y lo que pasó es que las otras empresas entonces también tuvieron que empezar a implementar esos fixes.
+
+OpenID Connect se trata de generar uno estandart así no todas las personas no tienen que hacer su propia versión de autenticación sobre Oauth.
+
+Las diferencias que tiene sobre Oauth es que los access token se usan exclusivamente para los llamados a la API es decir para obtener los recursos, y entra un concepto llamado **IdToken**, es un nuevo token que nos permite verificar si el usuario está autenticado y nos permite también obtener la información del usuario, básicamente Open Id Connect también define unos ``cleams`` y unos ``scopes`` definidos para esté **IdToken** y debemos también implementar un endpoint llamado **userInfo** donde enviamos el ``idToken`` y podemos obtener la información del usuario. 
+
+**Open Id Connect** también define como debemos hacer uso del manejo de sesión es decir como se debe hacer ``logout`` como se implementan cosas como ``single signInOut``, etc.
+
+El flujo es mas o menos el siguiente: se hace un request a ``/authorizate`` y esté nos genera un IdToken, este IdToken debe tener definidos los scopes de ``openId`` y ``profile``, con esté IdToken entonces ya sabemos que el usuario está autenticado y finalmente podemos hacer un request a ``/user-info`` y obtener la información del usuario.
+
 
