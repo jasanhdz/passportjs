@@ -1582,4 +1582,143 @@ Las diferencias que tiene sobre Oauth es que los access token se usan exclusivam
 
 El flujo es mas o menos el siguiente: se hace un request a ``/authorizate`` y esté nos genera un IdToken, este IdToken debe tener definidos los scopes de ``openId`` y ``profile``, con esté IdToken entonces ya sabemos que el usuario está autenticado y finalmente podemos hacer un request a ``/user-info`` y obtener la información del usuario.
 
+## Cómo crear un proyecto en Google API para hacer autenticación con 0Auth 2.0
+
+Con el fin de poder usar Google como método de autenticación es necesario crear un nuevo proyecto dentro de la consola de desarrolladores de Google.
+
+1. Nos dirigimos a https://console.developers.google.com y nos autenticamos con nuestra cuenta de Google.
+2. En la parte superior izquierda seleccionamos la organización que queremos usar (Debe haber una por defecto) y hacemos click en Create Project.
+3. Luego nos vamos al sidebar izquierdo y seleccionamos Credentials > Create credentials > OAuth client ID
+4. Nos aseguramos de elegir ``Web Application`` como el tipo de aplicación.
+5. Luego establecemos el nombre del cliente que en nuestro caso será ``SSR Server``, el Authorized JavaScript origins: ``http://localhost:8000`` y el Authorized redirect URIs ``http://localhost:8000/auth/google-oauth/callback``. Cuando hagamos despliegue de nuestra aplicación lo ideal es crear otro cliente y remplazar las URLs por las URLs correspondientes de producción.
+6. El Application Name del Consent Screen será ``Platzi Videos``.
+7. Al finalizar la creación copiamos el Client ID y Client secret que seran usados como GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET respectivamente.
+
+
+## Implementando 0Auth2.0 con Google
+
+Recuerda que de la lectura anterior debemos obtener el GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET. 
+
+Estós valores los vamos a poner en nuestro documento de variables de entorno, aparte de ahi también tenemos que agregarlos en nuestro archivo de configuración.
+
+Lo otro que necesitamos hacer es instalar nuestra librería: ``passport-oauth``, luego en nuestro Render Server, vamos a crear una nueva estrategia dentro de nuestro directorio ``ssr-server/utils/auth/statregies`` llamado ``oauth.js``, aquí vamos a determinar nuestra estrategia de Oauth2.0.
+
+En el archivo vamos a copiar unas URLS que hacen parte del OAuth de google, estás url son las siguientes:
+
+```js
+const GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token";
+const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
+```
+
+¿Como hacer las configuraciones de OpenIDConnect y OAuth2 para Google?
+
+- https://developers.google.com/identity/protocols/OpenIDConnect
+- https://developers.google.com/identity/protocols/OAuth2
+- https://developers.google.com/identity/protocols/OAuth2WebServer
+
+
+Estas urls de nuestro ducumento las sacamos de los enlaces de arriba.
+
+Ahora lo que vamos a hacer es generar nuestra estrategia de Oauth.
+
+```js
+const passport = require('passport');
+const axios = require('axios');
+const { OAuth2Strategy } = require('passport-oauth');
+const { config } = require('../../../config/index');
+const boom = require('@hapi/boom');
+const GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token";
+const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
+
+const oAuth2Strategy = new OAuth2Strategy({
+  authorizationURL: GOOGLE_AUTHORIZATION_URL,
+  tokenURL: GOOGLE_TOKEN_URL,
+  clientID: config.googleClientId,
+  clientSecret: config.googleClientSecret,
+  callbackURL: "auth/google-oauth/callback"
+}, async function (accessToken, refreshToken, profile, cb) {
+  const { data, status } = await axios({
+    url: `${config.apiUrl}/api/auth/sign-provider`,
+    method: 'post',
+    data: {
+      name: profile.name,
+      email: profile.email,
+      password: profile.id,
+      apiKeyToken: config.apiKeyToken
+    }
+  });
+
+  if (!data || status !== 200) {
+    return cb(boom.unauthorized(), false);
+  }
+
+  return cb(null, data);
+});
+
+oAuth2Strategy.userProfile = function (accessToken, done) {
+  this._oauth2.get(GOOGLE_USERINFO_URL, accessToken, (err, body) => {
+    if (err) {
+      return done(err);
+    }
+
+    try {
+      const { sub, name, email } = JSON.parse(body);
+
+      const profile = {
+        id: sub,
+        name,
+        email
+      }
+
+      done(null, profile);
+
+    } catch (parseError) {
+      done(parseError);
+    }
+  });
+};
+
+passport.use("google-oauth", oAuth2Strategy);
+```
+
+Ahora debemos ir a nuestro archivo index y debemos de agregar la estrategia que acabamos de crear.
+
+```js
+// OAuth2 Strategy
+require('./utils/auth/strategies/oauth');
+```
+
+Y ahora vamos a implementar otrs 2 endpoints
+
+```js
+app.get("auth/google-oauth", passport.authenticate("google-oauth", {
+  scope: ["email", "profile", "openid"]
+}));
+
+app.get(
+  "auth/google-oauth/callback",
+  passport.authenticate("google-oauth", { session: false }),
+  async (req, res, next) => {
+    if (req.user) {
+      next(boom.unauthorized());
+    }
+
+    const { token, ...user } = req.user;
+
+    res.cookie("token", token, {
+      httpOnly: !config.dev,
+      secure: !config.dev
+    });
+    
+    res.status(200).json(user);
+  }
+);
+
+app.listen(config.port, function () {
+  console.log(`Listening http://localhost:${config.port}`);
+});
+```
+
 
