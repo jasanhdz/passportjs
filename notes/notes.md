@@ -1690,18 +1690,21 @@ Ahora debemos ir a nuestro archivo index y debemos de agregar la estrategia que 
 require('./utils/auth/strategies/oauth');
 ```
 
-Y ahora vamos a implementar otrs 2 endpoints
+Y ahora vamos a implementar otros 2 endpoints
 
 ```js
-app.get("auth/google-oauth", passport.authenticate("google-oauth", {
-  scope: ["email", "profile", "openid"]
-}));
+app.get(
+  "/auth/google-oauth",
+  passport.authenticate("google-oauth", {
+    scope: ["email", "profile", "openid"]
+  })
+);
 
 app.get(
-  "auth/google-oauth/callback",
+  "/auth/google-oauth/callback",
   passport.authenticate("google-oauth", { session: false }),
-  async (req, res, next) => {
-    if (req.user) {
+  function(req, res, next) {
+    if (!req.user) {
       next(boom.unauthorized());
     }
 
@@ -1711,7 +1714,7 @@ app.get(
       httpOnly: !config.dev,
       secure: !config.dev
     });
-    
+
     res.status(200).json(user);
   }
 );
@@ -1721,4 +1724,405 @@ app.listen(config.port, function () {
 });
 ```
 
+## Implementando Sign Provider en nuestra API
 
+En esté modulo vamos a implementar nuestra ruta para que cualquier provedor tercero como por ejemplo la autenticación con google puede hacer uso de nuestra API.
+
+Lo que vamos a hacer es que en nuestros servicios de usuarios, esto es en: ``movies-api/services/`` vamos a crear un nuevo método que se va ha llamar ``getOrCreateUser``. Esté método recibe un usuario y apartir de esté método vamos a determinar que si no existe lo cree y si existe lo traiga.
+
+Para poder tener nuestra ruta debemos hacer una modificación en nuestro schema de ``users.js``.
+
+```js
+const joi = require('@hapi/joi');
+
+const userIdSchema = joi.string().regex(/^[0-9a-fA-F]{24}$/);
+
+const userSchema = {
+  name: joi
+    .string()
+    .max(100)
+    .required(),
+  email: joi
+    .string()
+    .email()
+    .required(),
+  password: joi.string().required()
+};
+
+const createUserSchema = {
+  ...userSchema,
+  isAdmin: joi.boolean()
+};
+
+const createProviderUserSchema = {
+  ...userSchema,
+  apiKeyToken: joi.string().required()
+};
+
+module.exports = {
+  userIdSchema,
+  createUserSchema,
+  createProviderUserSchema
+};
+```
+
+Porque ahora el userSchema lo necesitamos solo para hacer un nuevo schema que se va ha llamar ``createProviderUserSchema``
+
+Con esto ya podemos implementar nuestr ruta, y vamos a la ruta de autenticación. Necesitamos agregar nuestro nuevo ``createProviderUserSchema`` y al final vamos a agregar una nueva ruta post.
+
+```js
+  // la vamos a ocupar con todos nuestro provedores terceros
+    router.post(
+      '/sign-provider',
+      validationHandler(joi.object(createProviderUserSchema)),
+      async function(req, res, next) {
+        const { body } = req;
+  
+        const { apiKeyToken, ...user } = body;
+  
+        if (!apiKeyToken) {
+          next(boom.unauthorized('apiKeyToken is required'));
+        }
+  
+        try {
+          const queriedUser = await usersServices.getOrCreateUser({ user });
+          const apiKey = await apiKeysService.getApiKey({ token: apiKeyToken });
+  
+          if (!apiKey) {
+            next(boom.unauthorized());
+          }
+  
+          const { _id: id, name, email } = queriedUser;
+  
+          const payload = {
+            sub: id,
+            name,
+            email,
+            scopes: apiKey.scopes
+          };
+  
+          const token = jwt.sign(payload, config.authJwtSecret, {
+            expiresIn: '15m'
+          });
+  
+          return res.status(200).json({ token, user: { id, name, email } });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+```
+
+Con esto ya tenemos implementando toda nuestra ruta de Sign Provider, ahora vamos a revizar que todo esté funcionando correctamente, primero levantamos nuestros 2 Servidores, el de API y el del SSR y dirigirnos a la URL ``http://localhost:8000/auth/google-oauth``, hacemos la prueba, despues nos pide acceder a una cuenta de google, si todo sale bien se va ha ir el callback y me va ha devolver el usuario, no solo eso si no que en nuestras cookies de la aplicación vamos a tener la cookie con el token.
+
+Exploremos si el JWT es el token que esperamos, nos vamos a [jwt.io](jwt.io), copiamos el token para que sea decodificado y efectivamente acá tenemos nuestro usuario, email y los scopes que le definimos a nuestro usuario. Con esto hemos terminado la implementación haciendo la autenticación con google en nuestro render server.
+
+## Autenticación con Google usando OpenID Connect
+
+En el curso vimos como se podia implementar Google Authentication usando la estrategia de OAuth directamente. En esta lectura vamos a explorar como hacer la autenticación usando la estrategia directa de Google.
+
+Lo primero es instalar nuestras dependencias
+
+``npm install passport-google-oauth``
+
+Luego creamos una nueva estrategia llamada ``google`` dentro de
+``utils/auth/strategies/google.js:``
+
+```js
+const passport = require('passport');
+const { OAuth2Strategy: GoogleStrategy } = require('passport-google-oauth');
+const axios = require('axios');
+const boom = require('@hapi/boom');
+
+const { config } = require('../../../config');
+
+passport.use( new GoogleStrategy({
+    clientID: config.googleClientId,
+    clientSecret: config.googleClientSecret,
+    callbackURL: "/auth/google/callback",  
+},
+async (accessToken, refreshToken, { _json: profile }, done) => {
+    try{
+        const { data, status } = await axios({
+            url: `${config.apiUrl}/api/auth/sign-provider`,
+            method: "post",
+            data: {
+                name: profile.name,
+                email: profile.email,
+                password: profile.sub,
+                apiKeyToken: config.apiKeyToken
+            }
+        });
+
+        if(!data || status !== 200){
+            done(boom.unauthorized(), false)
+        }
+
+        done(null, data)
+    }catch(err){
+        done(err)
+    }
+}
+) );
+```
+
+Teniendo nuestra estrategia de Google ya podemos agregar las dos nuevas rutas de autenticación.
+
+```js
+app.get(
+  "/auth/google",
+  passport.authenticate("google", {
+    scope: ["email", "profile", "openid"]
+  })
+);
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { session: false }),
+  function(req, res, next) {
+    if (!req.user) {
+      next(boom.unauthorized());
+    }
+
+    const { token, ...user } = req.user;
+
+    res.cookie("token", token, {
+      httpOnly: !config.dev,
+      secure: !config.dev
+    });
+
+    res.status(200).json(user);
+  }
+);
+```
+
+Con esto tenemos nuestra implementación de autenticación con Google pero mucho más sencilla.
+
+## Cómo crear una cuenta de desarrollador con Twitter
+
+Con el fin de poder usar Twitter como método de autenticación es necesario crear una cuenta de desarrollador de Twitter. Es necesario postularse para que la cuenta de desarrollador pueda ser utilizada y suele tomar hasta 24 horas de aprobación. Para aplicar a la cuenta es necesario hacer dirigirse a https://developer.twitter.com/en/apply-for-access.html y hacer click en el botón`` Apply for a developer account``.
+
+Cuando la cuenta ha sido aprobada, entonces procederemos a crear una aplicación para usarla en nuestro método de autenticación, para ellos debemos:
+
+1. Nos dirigimos a la lista de nuestras aplicaciones en https://developer.twitter.com/en/apps
+2. Allí creamos una nueva app haciendo click en el botón Create an app.
+3. Llenamos los correspondientes campos como App Name y Website URL.
+4. Las URLs de Terms of Service URL y Privacy policy URL son necesarias para poder solicitar el email del usuario.
+5. Como callback URL podemos usar http://localhost:8000/auth/twitter/callback. Lo ideal es que cuando salimos a producción creamos una aplicación diferente y esta vez usaremos la URL de producción.
+6. Marcamos como Enabled que nuestra app va a ser usada para Sign in with Twitter.
+7. Hacemos click en Create, accedemos a los detalles de la app creada y en el tab de Permissions, y luego en Additional permissions marcamos Request email address from users y guardamos.
+8. Nos vamos al tab de Keys and tokens y copiamos los Consumer API Keys que son los que usaremos como TWITTER_CONSUMER_KEY y TWITTER_CONSUMER_SECRET respectivamente.
+
+## Autenticación con Twitter
+
+De la lectura anterior debemos copiar el consumer_key y el consumer_secret de twitter, es importante copiarlos en nuestro archivo ``.env`` y además también debemos crear un string de session, ya que esté middleware de passport con twitter necesita tener una session activa, a mi me gusta usar una página que se llama [keygen.io](keygen.io) donde podemos copiar un SHA KEY de 256 bits, lo copiamos y lo incluimos en nuestro secret de session también es importante leerlos desde nuestro archivo de configuración para despues poder consumirlos de nuestra estrategia.
+
+Ahora vamos a crear una nueva estrategia que se va ha llamar twitter, creamos la estrategia twitter.js.
+
+```js
+const passport = require('passport');
+const axios = require('axios');
+// para obtener un valor sin problemas de un objeto
+const { get } = require('lodash');
+const boom = require('@hapi/boom');
+const { Strategy: TwitterStrategy } = require('passport-twitter');
+
+const { config } = require('../../../config');
+
+passport.use(
+  new TwitterStrategy({
+    consumerKey: config.twitterConsumerKey,
+    consumerSecret: config.twitterConsumerSecret,
+    callbackURL: "auth/twitter/callback",
+    includeEmail: true
+  },
+    async (token, tokenSecret, profile, cb) => {
+      const { data, status } = await axios({
+        url: `${config.url}/api/auth/sign-provider`,
+        method: 'post',
+        data: {
+          name: profile.displayName,
+          email: get(profile, 'emails.0.value', `${profile.username}@twitter.com`),
+        },
+        password: profile.id,
+        apiKeyToken: config.apiKeyToken
+      });
+
+      if (!data || status !== 200) {
+        return cb(boom.unauthorized());
+      }
+
+      return cb(null, data);
+    }
+  )
+)
+```
+
+Con nuestra estrategia implementada ahora podemos ir a nuestro servidor y lo primero que debemos incluir es unas librerías que necesitamos ``express-session``, luego entonces haríamos en el ``app.use`` una implementación de la session y en esté caso el secret que nos va ha codificar la session sería el ``config.sessionSecret``.
+
+Lo otro que tenemos que hacer, es hacer uso de ``passport.initialize()`` para que inicialice la session y luego de ``passport-session``, debemos tener todo estó requerido porque está librería de twitter requiere que tengamos una session activa. Ahora lo que tenemos que hacer es incluir nuestra estrategia de twitter y como hicimos la autenticación con google es siemplemente implementar las rutas de autenticación.
+
+```js
+app.get("/auth/twitter", passport.authenticate("twitter"));
+
+app.get(
+  "/auth/twitter/callback",
+  passport.authenticate("twitter", { session: false }),
+  async (req, res, next) => {
+    if (!req.user) {
+      next(boom.unauthorized());
+    }
+
+    const { token, ...user } = req.user;
+
+    res.cookie("token", token, {
+      httpOnly: !config.dev,
+      secure: !config.dev
+    });
+
+    res.status(200).json(user);
+  }
+);
+```
+
+Ahora lo que tenemos que hacer es levantar nuestros 2 servidores y hacer las pruebas necesarias, si aún no estamos autorizados por twitter tenemos que esperar a que nos autorize para que funcione correctamente.
+
+## Autenticación con Facebook
+
+A continuación veremos cómo podemos implementar la autenticación haciendo uso de la estrategia para Facebook. Es importante primero tener una cuenta de Facebook para desarrolladores: https://developers.facebook.com/ y crear una app/project como lo hemos hecho anteriormente para Google y Twitter. Podemos seguir las instrucciones aquí: https://developers.facebook.com/docs/apps, para obtener nuestros FACEBOOK_CLIENT_ID y FACEBOOK_CLIENT_SECRET respectivamente.
+
+Lo primero es instalar nuestras dependencias
+
+``npm install passport-facebook``
+
+Luego creamos una nueva estrategia llamada ``facebook`` dentro de
+``utils/auth/strategies/facebook.js``
+
+```js
+// strategy
+const passport = require('passport');
+const axios = require('axios');
+const { Strategy: FacebookStrategy } = require('passport-facebook');
+const boom = require('@hapi/boom');
+
+const { config } = require('../../../config');
+
+passport.use(
+  new FacebookStrategy({
+    clientID: config.facebookClientId,
+    clientSecret: config.facebookClientSecret,
+    callbackURL: "/auth/facebook/callback",
+    profileFields: ["id", "email", "displayName"]
+  }, async (accessToken, refreshToken, profile, done) => {
+    const { data, status } = await axios({
+      url: `${config.apiUrl}/api/auth/sign-provider`,
+      method: 'post',
+      data: {
+        name: profile.displayName,
+        email: profile.email || `${profile.id}@facebook.com`,
+        password: profile.id,
+        apiKeyToken: config.apiKeyToken
+      }
+    });
+
+    if (!data || status !== 200) {
+      return done(boom.unauthorized(), false);
+    }
+
+    return done(null, data);
+  })
+);
+```
+
+Teniendo nuestra estrategia de Facebook ya podemos agregar las dos nuevas rutas de autenticación.
+
+```js
+// routes
+app.get("/auth/facebook", passport.authenticate("facebook"));
+
+app.get(
+  "/auth/facebook/callback",
+  passport.authenticate("facebook", { session: false }),
+  async (req, res, next) => {
+    if (!req.user) {
+      next(boom.unauthorized());
+    }
+
+    const { token, ...user } = req.user;
+
+    res.cookie("token", token, {
+      httpOnly: !config.dev,
+      secure: !config.dev
+    });
+
+    res.status(200).json(user);
+  }
+);
+```
+
+## Seguridad con Helmet
+
+En esté modulo vamos a implementar varias estrategias para asegurar nuestra aplicación en express, lo primero que vamos a implementar es un middleware llamado [Helmet.js](https://helmetjs.github.io/).
+
+Helmet en su página nos muestra lo fácil que es usarlo, es cuestion de requerir helmet y simplemente usarlo como un middleware general en la aplicación de express, lo importante que tiene helmet es que implementa 13 funciones middleware que establecen códigos ``htpp`` que ayudan a la seguridad de nuestra aplicación, el por defecto activa algunos, pero aún tenemos la posibilidad de activar todos los 13. 
+
+Lo que me parece muy interesante de su página, es que no solo explica que es el módulo sino también cúal es el ataque que se le hace a ese modulo. Por ejemplo uno de mis preferidos se llamá ``Don't Sniff Mimetype``, lo que sucede es que el navegador trata de establecer cuál es el tipo de contenido que tiene cualquier recurso, entonces lo que podría hacer el atacante es decir que la URL hace parte de una imagen, pero en realidad esa imagen es un archivo ``html`` que puede ejecutar javascript malisioso, lo que hace helmet por debajo es simplemente establecer un ``header`` que se llama ``X-Content-Type-Options`` ``nosniff`` así sucesivamente tiene otros diferentes headers que permiten establecer mejores prácticas de seguridad.
+
+Para implementar helmet lo primero que necesitamos hacer es instalar nuestra dependencia de helmet ``npm i helmet``, luego nos dirigimos a nuestro archivo index y requerimos el paquete ``helmet``.
+
+```js
+const express = require('express')
+const helmet = require('helmet')
+
+const app = express()
+
+app.use(helmet())
+```
+
+Esto por defecto esta estableciendo los valores por defecto que tiene helmet, si quisieramos establecer parametros extra, lo único que deberíamos hacer es pasar un archivo de configuración, así de sencillo es implementar helmet en nuestra aplicación.
+
+## Detectando vulnearabilidades con npm audit
+
+Lo único que debemos hacer es correr: ``npm audit``. npm audit lo que hace es que se va por todas nuestras dependencias e identifica si hay vulnerabilidades desconocidas.
+
+Si tuvieramos un proyecto antiguo con vulnerabilidades lo que tendriamos que hacer para corregirlas es correr el comando ```npm audit fix``
+
+Como puedes ver estas vulnerabilidades pueden ocurrir en cualquier momento, lo idas es correr ``npm audit`` de vez en cuando, sin embargo podemos automatizar la deteccción de vulnerabilidades usando un servicio llamado ``snyk``.
+
+## Automatizar el chequeo de vulnerabilidades con Snyk
+
+Para usar snyk lo primero es crear una cuenta en https://app.snyk.io/signup para agilizar el proceso recomiendo usar la cuenta de GitHub.
+
+<div align="center">
+ <img src="./assets/snyk-landing.png" alt="">
+</div>
+
+Despues de la creación de la cuenta nos redireccionara a las integraciones o podemos ir directamente mediante el link ``https://app.snyk.io/org/<usuario>/integrations``.
+
+<div align="center">
+ <img src="./assets/synk-integration.png" alt="">
+</div>
+
+Seleccionamos la integración con GitHub (ó con el servicio más adecuado para nuestro proyecto) y allí nos aseguramos de conectar nuestra cuenta con GitHub, otorgando los permisos necesarios.
+
+<div align="center">
+ <img src="./assets/snyk-connected.png" alt="">
+</div>
+
+Por ultimo necesitamos agregar el repositorio de nuestro proyecto para que haga la revision automática de vulnerabilidades en cada Pull request, mediante el botón ``Add your GitHub repositories to Snyk``.
+
+Allí buscaremos el repositorio de nuestro proyecto, lo seleccionamos y le damos en el botón ``Add 1 selected repository to Snyk``.
+
+Cuando termine la integración podemos dirigirnos al dashboard de nuestros proyectos haciendo click en la pestaña ``Projects`` o mediante el link ``https://app.snyk.io/org/<usuario></usuario>/projects`` y verificar el estado de nuestras dependencias:
+
+<div align="center">
+ <img src="./assets/snyk-projects.png" alt="">
+</div>
+
+En lo posible debemos evitar tener vulnerabilidades High (H) o Medium (M) para corregirlas le damos click en ``View report and fix``.
+
+<code>Tener en cuenta que algunas vulnerabilidades no tienen solución en el momento por lo que toca estar pendiente de un posible fix o cambiar de librería.</code>
+
+## Que és OWASP y buenas prácticas de seguridad
+
+OWASP: son las siglas del Open Web Application Security Proyect, es una organización que se encarga de velar por las buenas prácticas de seguridad a nivel mundial. Hay un documento que se llama el Top Ten OWASP y lista los 10 resgos de seguridad más comunes 

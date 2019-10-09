@@ -12,7 +12,7 @@ const oAuth2Strategy = new OAuth2Strategy({
   tokenURL: GOOGLE_TOKEN_URL,
   clientID: config.googleClientId,
   clientSecret: config.googleClientSecret,
-  callbackURL: "auth/google-oauth/callback"
+  callbackURL: "/auth/google-oauth/callback"
 }, async function (accessToken, refreshToken, profile, cb) {
   const { data, status } = await axios({
     url: `${config.apiUrl}/api/auth/sign-provider`,
@@ -56,3 +56,5 @@ oAuth2Strategy.userProfile = function (accessToken, done) {
 };
 
 passport.use("google-oauth", oAuth2Strategy);
+
+

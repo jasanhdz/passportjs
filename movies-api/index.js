@@ -1,4 +1,5 @@
 const express = require('express');
+const helmet = require('helmet');
 const app = express();
 
 const { config } = require('./config/index');
@@ -12,7 +13,7 @@ const notFoundHandler = require('./utils/middleware/notFoundHandler');
 
 // middleware de bodyparser
 app.use(express.json());
-
+app.use(helmet());
 // routes
 moviesApi(app);
 userMoviesApi(app);

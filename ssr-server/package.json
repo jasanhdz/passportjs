@@ -17,11 +17,16 @@
     "cookie-parser": "1.4.4",
     "dotenv": "8.1.0",
     "express": "4.17.1",
+    "express-session": "1.16.2",
+    "helmet": "3.21.1",
     "jsonwebtoken": "8.5.1",
+    "lodash": "4.17.15",
     "passport": "0.4.0",
+    "passport-facebook": "3.0.0",
     "passport-http": "0.3.0",
     "passport-jwt": "4.0.0",
-    "passport-oauth": "^1.0.0"
+    "passport-oauth": "^1.0.0",
+    "passport-twitter": "1.0.4"
   },
   "devDependencies": {
     "nodemon": "^1.19.3"
