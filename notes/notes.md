@@ -2125,4 +2125,40 @@ En lo posible debemos evitar tener vulnerabilidades High (H) o Medium (M) para c
 
 ## Que és OWASP y buenas prácticas de seguridad
 
-OWASP: son las siglas del Open Web Application Security Proyect, es una organización que se encarga de velar por las buenas prácticas de seguridad a nivel mundial. Hay un documento que se llama el Top Ten OWASP y lista los 10 resgos de seguridad más comunes 
+OWASP: son las siglas del Open Web Application Security Proyect, es una organización que se encarga de velar por las buenas prácticas de seguridad a nivel mundial. Hay un documento que se llama el Top Ten OWASP y lista los 10 resgos de seguridad más comunes.
+
+Hablemos de las primeras 3:
+
+Inyección: es un ataque que describe como hacer sql-inyection, esté ataque determina que hay input que no están protegidos podemos usar código SQL en nuestros inputs directamente para afectar la base de datos
+
+Broken Autentication: Está relaciona con todo el tema de autenticación, explica en no fomentar o banear personas que intentan autenticar muchas veces o usar contraseñas muy debiles. Por ejemplo te puedes dirigir a [howsecureismypassword](https://howsecureismypassword.net/) y probar que tan seguro es tu password.
+
+Si yo ingreso el password ``123456`` me dice que el password será crakeado instantaneamente y esto es porque este password hace parte de los top 5 de los password más usados, la mejor manera de construir un password seguro es que tenga muchos caracteres inluso caracteres especiales.
+
+Sesitive Data Exposure: Aunque tu no lo creas revelar información sensible al usuario puede ser factor para que los hackers hagan algo llamado ingenieria social, si ellos tienen tu información personal se pueden hacer pasar por identidades gubernamentales o por cualquier otra identidad que se haga creer que es tu banco, seguridad social, etc. 
+
+Por eso es muy importante mantener la información segura y encriptada. La [GDPR] que significa **General Data Protection Regulation** que te obliga a que la información de tus usuarios sea guardada de manera segura, es muy importante seguir esta ley porque si no te pueden multar.
+
+Si quieres seguir profundizando en esté tema te recomiendo el curso de OWASP que está en platzi.
+
+Top Ten de seguridad de OWASP
+https://www.owasp.org/images/5/5e/OWASP-Top-10-2017-es.pdf
+
+## Buenas prácticas de seguridad
+
+- **Usar un gestor de contraseñas**: las contraseñas nunca se deben de repetir además los gestores de contraseñas nos indican si las contraseñas tienen buena seguridad, si están repetidas y las genera por nosotros, recurda que las contraseñas son como la ropa interior. _Debes cambiarlas regularmente, no las debes dejar en cima del escritorio, y nunca se las prestes a nadie_.
+
+<div align="center">
+  <img src="./assets/passwords.png" alt="">
+</div>
+
+- **Usar multi-factor auth**: o autenticación en 2 pasos, estó trata además de que introduzcas la contraseña en tu cuenta, debes además generar otro método de autenticación, esté puede ser _reconocimiento facial, la huella, o hay algo muy interesante llamado ue keys: son una llave que necesita ser introducida a tu computador para poder acceder a tu cuenta_.
+
+- **Seguridad en tu entorno**: Si tu dejas tu computador al aire libre en un lugar inseguro fácilmente también te van ha poder hackear, de nada sirve que tengas la puerta más segura con todos los cerrojos si dejas una ventana abierta de tu casa.
+
+- **Manten actualizadas tus aplicaciones y SO**: como vimos en clases anteriores las vulnerabilidades de los paquetes suceden de un momento para otro, es muy importante entonces mantener actualizadas las aplicaciones y el sistema operativo porque ahí es donde se corrigen todas estas vulnerabilidades, además como lo mencionamos debes mantener actualizadas las dependencias, no solo de un proyecto si no de todos tus proyectos.
+
+- **Mantente informado**: twitter es una muy buena fuente de información acerca de cuales son los ataques de seguridad, el hastag #secure #cibersecure te puede ayudar a identificar que es lo que esta sucediendo, investiga que blogs de seguridad existen, ve ha eventos, y si vas a salir con una aplicación a produccion te recomiendo que contrates a una compañia experta en seguridad que te haga una auditoria de tu aplicación.
+
+
+
