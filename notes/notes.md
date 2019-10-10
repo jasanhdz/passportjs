@@ -1,12 +1,78 @@
+<div align="center">
+  <h1>Passport.js</h1>
+  <img src="./assets/passport-logo.png" alt="passport logo" height="300px">
+  <h5 style="font-weight:bold;" >Simple, unobtrusive authentication for Node.js</h5>
+</div>
+
+## Tabla de Contenido
+
+- [Stack de Seguridad Moderno](#stack-de-seguridad-moderno)
+- [¿Qué es la autenticación y la autorización?](#qué-es-la-autenticación-y-la-autorización)
+- [Introducción a las sesiones](#introducción-a-las-sesiones)
+- [Anatomía de un JWT](#anatomía-de-un-jwt)
+- [Autenticación tradicional vs JWT](#autenticación-tradicional-vs-jwt)
+- [Firmando y verificando un JWT](#firmando-y-verificando-un-jwt)
+- [Server-side vs Client-side sessions](#server-side-vs-client-side-sessions)
+  - [¿Qué es una sesión?](#qué-es-una-sesión)
+  - [¿Qué es una sesion del lado del servidor?](#qué-es-una-sesion-del-lado-del-servidor)
+  - [¿Qué es una sesión del lado del cliente?](#qué-es-una-sesión-del-lado-del-cliente)
+- [Buenas Prácticas con JWT](#buenas-prácticas-con-jwt)
+  - [Evitar almacenar información sensible](#evitar-almacenar-información-sensible)
+  - [Mantener su peso lo más liviano posible](#mantener-su-peso-lo-más-liviano-posible)
+  - [Establecer un tiempo de expiración corto](#establecer-un-tiempo-de-expiración-corto)
+  - [Tratar los JWT como tokens opacos](#tratar-los-jwt-como-tokens-opacos)
+  - [¿Donde guardar los tokens?](#donde-guardar-los-tokens)
+- [Silent authenticacion vs Refresh tokens](#silent-authenticacion-vs-refresh-tokens)
+- [¿Qué son las cookies y cómo implementar el manejo de sesión?](#qué-son-las-cookies-y-cómo-implementar-el-manejo-de-sesión)
+  - [¿Qué es un cookie?](#qué-es-un-cookie)
+  - [Implementación de cookies](#implementación-de-cookies)
+  - [Cookies vs Session Storage vs Local Storage](#cookies-vs-session-storage-vs-local-storage)
+- [Arquitectura del Proyecto VideoCine](#arquitectura-del-proyecto-videocine)
+- [Agregando coleción de usuarios](#agregando-coleción-de-usuarios)
+- [Agregando colección de películas de usuario](#agregando-colección-de-películas-de-usuario)
+- [Implementando el POST y DELETE de las peliculas de usuario](#implementando-el-post-y-delete-de-las-peliculas-de-usuario)
+- [Como conectarnos a una base de datos](#como-conectarnos-a-una-base-de-datos)
+  - [Conexión usando MongoDB Compass](#conexión-usando-mongodb-compass)
+  - [Configuración de Passport.js](#configuración-de-passportjs)
+- [Implementación de BasicStrategy con Passport.js](#implementación-de-basicstrategy-con-passportjs)
+- [Implementación de Strategy y ExtractJwt con Passport.js](#implementación-de-strategy-y-extractjwt-con-passportjs
+)
+- [Implementación de nuestro Sign-in](#implementación-de-nuestro-sign-in)
+- [Implementación de nuestro Sign Up](#implementación-de-nuestro-sign-up)
+- [Protegiendo nuestras rutas con Passport.js](#protegiendo-nuestras-rutas-con-passportjs)
+- [Implementando recordar sesión](#implementando-recordar-sesión)
+- [Middleware para el manejo de scopes](#middleware-para-el-manejo-de-scopes)
+- [Configuración del Server Render](#configuración-del-server-render)
+- [Comunicación máquina a máquina](#comunicación-máquina-a-máquina)
+- [Implementación de las peliculas de usuario](#implementación-de-las-peliculas-de-usuario)
+- [¿Qué es OAuth 2.0?](#qué-es-oauth-20)
+- [¿Qué es OpenID Connect?](#qué-es-openid-connect)
+- [Cómo crear un proyecto en Google API para hacer autenticación con 0Auth 2.0](#cómo-crear-un-proyecto-en-google-api-para-hacer-autenticación-con-0auth-20)
+- [Implementando 0Auth2.0 con Google](#implementando-0auth20-con-google)
+- [Implementando Sign Provider en nuestra API](#implementando-sign-provider-en-nuestra-api)
+- [Autenticación con Google usando OpenID Connect](#autenticación-con-google-usando-openid-connect)
+- [Cómo crear una cuenta de desarrollador con Twitter](#cómo-crear-una-cuenta-de-desarrollador-con-twitter)
+- [Autenticación con Twitter](#autenticación-con-twitter)
+- [Autenticación con Facebook](#autenticación-con-facebook)
+- [Seguridad con Helmet](#seguridad-con-helmet)
+- [Detectando vulnearabilidades con npm audit](#detectando-vulnearabilidades-con-npm-audit)
+- [Automatizar el chequeo de vulnerabilidades con Snyk](#automatizar-el-chequeo-de-vulnerabilidades-con-snyk)
+- [Qué es OWASP y buenas prácticas de seguridad](#qué-es-owasp-y-buenas-prácticas-de-seguridad)
+- [Buenas prácticas de seguridad](#buenas-prácticas-de-seguridad)
+
 ## Stack de Seguridad Moderno
 
-Anteriormente las compañias se comunicaban mediante un [intranet](https://es.wikipedia.org/wiki/Intranet), un [intranet](https://es.wikipedia.org/wiki/Intranet) a diferencia del [internet](https://es.wikipedia.org/wiki/Internet) es una red privada que funciona dentro de las compañias, en está red había protocolos como [SOAP](https://es.wikipedia.org/wiki/Simple_Object_Access_Protocol), [SAML](https://es.wikipedia.org/wiki/Security_Assertion_Markup_Language), [WS-Federation](https://en.wikipedia.org/wiki/WS-Federation), pero esos protocolos se quedarón muy cortos cuando llegó la **revolución mobile**, además tecnologías como [HTML5](https://es.wikipedia.org/wiki/HTML5), empezarón a necesitar otra serie de cosas y conceptos como la autheticación y la autorización también necesitaban una evolución, además el auge de los [microservicios](https://docs.microsoft.com/es-es/azure/architecture/guide/architecture-styles/microservices) [o](https://es.wikipedia.org/wiki/Arquitectura_de_microservicios) y la necesidad de tener multiples clientes, hicieron la creación de un nuevo STACK, esté stack se compone generalmente de 3 protocolos: [JSON Web Tokens](https://es.wikipedia.org/wiki/JSON_Web_Token), [OAuth 2.0](https://es.wikipedia.org/wiki/OAuth#OAuth_2.0) [o](https://www.digitalocean.com/community/tutorials/una-introduccion-a-oauth-2-es) , y [OpenID Connect](https://es.wikipedia.org/wiki/OpenID_Connect).
+Anteriormente las compañias se comunicaban mediante un [intranet](https://es.wikipedia.org/wiki/Intranet), un [intranet](https://es.wikipedia.org/wiki/Intranet) a diferencia del [internet](https://es.wikipedia.org/wiki/Internet) es una red privada que funciona dentro de las compañias, en está red había protocolos como [SOAP](https://es.wikipedia.org/wiki/Simple_Object_Access_Protocol), [SAML](https://es.wikipedia.org/wiki/Security_Assertion_Markup_Language), [WS-Federation](https://en.wikipedia.org/wiki/WS-Federation), pero esos protocolos se quedarón muy cortos cuando llegó la **revolución mobile**, además tecnologías como [HTML5](https://es.wikipedia.org/wiki/HTML5), empezarón a necesitar otra serie de cosas y conceptos como la autheticación y la autorización, también necesitaban una evolución, además el auge de los [microservicios](https://docs.microsoft.com/es-es/azure/architecture/guide/architecture-styles/microservices) [o](https://es.wikipedia.org/wiki/Arquitectura_de_microservicios) y la necesidad de tener multiples clientes, hicieron la creación de un nuevo STACK, esté stack se compone generalmente de 3 protocolos: [JSON Web Tokens](https://es.wikipedia.org/wiki/JSON_Web_Token), [OAuth 2.0](https://es.wikipedia.org/wiki/OAuth#OAuth_2.0) [o](https://www.digitalocean.com/community/tutorials/una-introduccion-a-oauth-2-es) , y [OpenID Connect](https://es.wikipedia.org/wiki/OpenID_Connect).
 
 - **JSON Web Tokens**: Son un estandar de la industria abierto que nos permite comunicarnos entre 2 clientes de un lado a otro de una manera más segura.
 
-- **OAuth 2.0**: Es un standart de la industria que permite implementar autorización, hay que tener mucho cuidado en **No confudir autorización con autenticación**. Precisamente una de las diferencias de open authorization 1.0(OAuth 1.0) y su versión 2 fue la necesidad de adaptarse a estas nuevas tecnologias mobile.
+- **OAuth 2.0**: Es un standar de la industria que permite implementar autorización, hay que tener mucho cuidado en **No confudir autorización con autenticación**. Precisamente una de las diferencias de open authorization 1.0(OAuth 1.0) y su versión 2 fue la necesidad de adaptarse a estas nuevas tecnologias mobile.
 
 - **OpenID Connect**: Es una capa de autenticación que funciona por encima de **OAuth 2.0** 
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## ¿Qué es la autenticación y la autorización?
 
@@ -20,19 +86,27 @@ _"Los carros modernos suelen tener 2 llaves, una llave que sirve para conducir y
 
 En los sistemas pasa algó muy similar, nosotros aveces otorgamos permisos de solo lectura y escritura, es nuestra aplicación nosotros vamos a otorgar una serie de permisos, unos permisos que son del usuario final que son de lectura y escritura sobre ciertas colecciones, pero también vamos a otorgar otros permisos administrativos, y esto lo vamos a hacer manejando unos tokens que vamos a otorgarle a nuestro servidor.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Introducción a las sesiones
 
-Cuando tu visitas un sitio web se crea una petición http. [Http]() es un protocolo que no tienen estado esto quiere decir que diferentes direcciones http nunca comparten información entre si, así que la manera de poder compartir está información en peticiones http es mediante el uso de una sesión. Cuando visitas un sitio web por primera vez se crea una sesión, no es necesario que estés autenticado para que está sesión sea creada.
+Cuando tu visitas un sitio web se crea una petición http. [Http](https://es.wikipedia.org/wiki/Protocolo_de_transferencia_de_hipertexto) es un protocolo que no tienen estado esto quiere decir que diferentes direcciones http nunca comparten información entre si, así que la manera de poder compartir está información en peticiones http es mediante el uso de una sesión. Cuando visitas un sitio web por primera vez se crea una sesión, no es necesario que estés autenticado para que está sesión sea creada.
 
-Supon que vas a un sitio a buscar vuelos, cuando tu entras al sitio se te crea una sesión y a menudo que vas haciendo busquedad a esos vuelos, se van guardando tus preferencias de búsquedad en está sesión, luego está sesión generó un ID que se almaceno en una [cookie](), la cookie es un archivo que se almacena en tu navegador, para que cuando tu cierres el navegador la cookie permanesca con el id de la sesión, así la próxima vez que vuelvas esté ID de la sesión que permance en la cookie se relaciona con la sesión que estaba previamente abierta y así puede cargar tus preferencias en los vuelos que estabas buscando.
+Supon que vas a un sitio a buscar vuelos, cuando tu entras al sitio se te crea una sesión y a menudo que vas haciendo busquedad a esos vuelos, se van guardando tus preferencias de búsquedad en está sesión, luego está sesión genera un ID que se almaceno en una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)). La [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) es un archivo que se almacena en tu navegador, para que cuando tu cierres el navegador la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) permanesca con el id de la sesión, así la próxima vez que vuelvas esté ID de la sesión que permance en la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) se relaciona con la sesión que estaba previamente abierta y así puede cargar tus preferencias en los vuelos que estabas buscando.
 
-Es por eso que muchas veces aunque nosotros no iniciemos sesión podemos ver que nuestras preferencias está ahí, también cuando hay un proceso de autenticación, la sesión se almacena directamente y se relaciona con tu usuario, por seguridad la sesión debería terminar ciertos minutos despues de que hay un inactividad, sin embargo dependiendo el mecanismo que estés usando podrías tener sesiones por dias o incluso por meses [cookiesSession] y [expressSession] son librerías que nos permiten implementar todo el tema de sesiones en express, la diferencia más grande es que cookiesSession nos permite almacenar la sesión en la cookie, mientras que express sesión nos permite almacenar la sesión en la memoría en el lado del servidor.
+Es por eso que muchas veces aunque nosotros no iniciemos sesión podemos ver que nuestras preferencias está ahí, también cuando hay un proceso de autenticación, la sesión se almacena directamente y se relaciona con tu usuario, por seguridad la sesión debería terminar ciertos minutos despues de que hay un inactividad, sin embargo dependiendo el mecanismo que estés usando podrías tener sesiones por dias o incluso por meses **cookiesSession** y [express-session](https://www.npmjs.com/package/express-session) son librerías que nos permiten implementar todo el tema de sesiones en express, la diferencia más grande es que **cookiesSession** nos permite almacenar la sesión en la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)), mientras que **express-session** nos permite almacenar la sesión en la memoría en el lado del servidor.
 
 A la hora de escalar la sesión es muy importante utilizar bases de datos en memoria como Redis, eso es una ventaja que tiene JWT, pues JWT no tiene estado y por lo tanto no necesita memoria, pero más adelante vamos a ver cuales son las diferentes ventajas y desventajas sobre JWT y Sesiones.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Anatomía de un JWT
 
-Un JWT es un estandart de la industria que nos permite generar demandas entre 2 clientes de manera segura.
+Un JWT es un estandar de la industria que nos permite generar demandas entre 2 clientes de manera segura.
 
 ``Un JWT luce más o menos así``.
 
@@ -50,42 +124,49 @@ Los algoritmos asincronos deben usarse donde hay partes públicas que puedan ten
 
 - **Payload**: Es donde guardamos toda la información de nuestro usuario, incluso todos los scopes de autorización, esté payload se compone de algó llamado los **claims**, los claims son generalmente representados por 3 letras para mantener el JWT muy pequeño, hay diferentes tipos de claims.
 
-Nosotros en la página donde está el estandart podemos ver en la sección 4.1 lo que se llama los ``Registered Claim Name``s. Estos son ``clains`` especificos que tienen una definición propia y debe respetarse.
+Nosotros en la página donde está el estandar podemos ver en la sección 4.1 lo que se llama los ``Registered Claim Names``. Estos son ``clains`` especificos que tienen una definición propia y debe respetarse.
 
 También podemos usar los ``Public Claim Names``, estos pueden usarse entre diferentes aplicaciones y ya estan también definidos, mientras que los **Private Claim Names**, son los que tu defines para tu aplicación.
 
 
 - **Signature**: La tercera parte del JWT que es la firma y es lo que hace muy poderoso el JWT está compuesto por el **header códificado** más el **payload códificado**, ha esto se le aplica el algoritmo de encriptación por su puesto usando un ``secret``. En el caso del algoritmo H256 debemos usar un string de 256 bits de longitud.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Autenticación tradicional vs JWT
 
-En la autenticación tradicional cuando sucede un proceso de autenticación se crea una sesión, el id de está sesión se almacena en una cookie que es enviada al navegador. Recordemos que las cookies no se llaman cookies por las galletas de chocolate, sino que se llamán cookies **por las galletas de la fortuna que tienen mensajes**, apartir de ahí todos los request tienen la cookie que tiene almacena el id de la sesión y está es usada para verificar la sesión previamente activa, uno de los problemas que tiene es esté browser es por ejemplo: clientes como las Single Pages Apps, no pueden refrescar o no pueden refrescar todas las veces entonces no pudieron saber si hubo cambios en la sesión. Otro problema es que por definición las Rest API no deberían tener estado, al usar sesiones estamos generando estado y esto contradice esté principio, otro problema es que en arquitecturas modernas que usan por ejemplo microservicios, la sesión que solo existe en una máquina no fluye durante los otros clientes, entonces es un poco dificil de escalar, y otro problema es que por ejemplo el control de acceso siempre requiere que vallamos a base de datos, finalmente controlar el uso de memoria también puede ser un problema, ya que cada cliente que se conecta genera una sesión generando más consumo de memoria.
+En la autenticación tradicional cuando sucede un proceso de autenticación se crea una sesión, el id de está sesión se almacena en una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) que es enviada al navegador. Recordemos que las [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))s no se llaman [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))s por las galletas de chocolate, sino que se llamán [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))s **por las galletas de la fortuna que tienen mensajes**, apartir de ahí todos los request tienen la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) que tiene almacena el id de la sesión y está es usada para verificar la sesión previamente activa, uno de los problemas que tiene es esté browser es por ejemplo: clientes como las **Single Pages Apps**, no pueden refrescar o no pueden refrescar todas las veces entonces no pudieron saber si hubo cambios en la sesión. Otro problema es que por definición las Rest API no deberían tener estado, al usar sesiones estamos generando estado y esto contradice esté principio, otro problema es que en arquitecturas modernas que usan por ejemplo microservicios, la sesión que solo existe en una máquina no fluye durante los otros clientes, entonces es un poco dificil de escalar, y otro problema es que por ejemplo el control de acceso siempre requiere que vallamos a base de datos, finalmente controlar el uso de memoria también puede ser un problema, ya que cada cliente que se conecta genera una sesión generando más consumo de memoria.
 
-En la autenticación con JWT al suceder el proceso de autenticación se firma un token, apartir de ahí el token es enviado al cliente y esté deber ser almacenado en memoria o en una cookie, todos los request de aquí en adelante llevan esté token, una de las ventajas es que una aplicación como una Single Pages App ya no requiere del backend para saber si el usuario está autenticado, lo otro es que el backend puede recibir múltiples request de múltiples clientes y lo único que le interesa es saber si el token está bien firmado, finalmente es el cliente quien sabe que permisos tienen y no tiene que ir hasta base de datos para saber si tiene estos permisos.
+En la autenticación con JWT al suceder el proceso de autenticación se firma un token, apartir de ahí el token es enviado al cliente y esté deber ser almacenado en memoria o en una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)), todos los request de aquí en adelante llevan esté token, una de las ventajas es que una aplicación como una **Single Pages App** ya no requiere del backend para saber si el usuario está autenticado, lo otro es que el backend puede recibir múltiples request de múltiples clientes y lo único que le interesa es saber si el token está bien firmado, finalmente es el cliente quien sabe que permisos tienen y no tiene que ir hasta base de datos para saber si tiene estos permisos.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Firmando y verificando un JWT
 
 Para firmar un JWT lo primero que debemos hacer es hacer uso de una librería llamada ``nodejsonwebtoken`` está librería tiene un método llamado ``sign``, el primer sign recibe como primer argumento el ``payload`` de JWT, recordemos que esté payload esta construido con los diferentes **claims** que definamos, como segundo atributo debe recibir el ``secret`` con el que va ha ser firmado la firma del JWT, y finalmente hay un tercer argumento que pueden ser ``options`` extras para nuestro firmado del JWT.
 
-Para la verificación de nuestro JWT usando la misma librería vamos a hacer uso de la misma librería, vamos a hacer uso del método ``verify``, en el primer argumento vamos a recibir el ``token`` que queremos verificar, como segundo argumento vamos a recibir el ``secret`` y como tercer argumento de manera opcional vamos a recibir un callback que nos va a regresar el JWT decodificado, también podemos omitir esté tercer argumento y simplemente recibirlo de manaera sincrona. 
+Para la verificación de nuestro JWT usando la misma librería vamos a hacer uso de la misma librería, vamos a hacer uso del método ``verify``, en el primer argumento vamos a recibir el ``token`` que queremos verificar, como segundo argumento vamos a recibir el ``secret`` y como tercer argumento de manera opcional vamos a recibir un ``callback`` que nos va a regresar el JWT decodificado, también podemos omitir esté tercer argumento y simplemente recibirlo de manaera sincrona. 
 
 Vamos ver en el código como puedes lograr estó: _Para esté ejemplo_
 
 1. Creamos una carpeta llamada ``jwt-utilities``
 2. Ahi vamos a crear nuestro ejemplo usando ``npm init -y``
-3. Creamos un archivo index.js.
+3. Creamos un archivo ``index.js``.
 4. Instalamos nuestra dependencia de JWT ``npm i jsonwebtoken``
 5. En nuestro archivo index vamos a requerir la librería
-```const jwt = require('jsonwebtoken');``
+``const jwt = require('jsonwebtoken');``
 
-En el vamos a hacer varias cosas, lo primero es que sus argumentos los vamos a sacar de la terminal, para ello vamos a hacer uso de process argument. El process argument lo que hace es que lee los comando de la terminal.
+En el vamos a hacer varias cosas, lo primero es que sus argumentos los vamos a sacar de la terminal, para ello vamos a hacer uso de process argument. El process argument lo que hace es que lee los comandos de la terminal.
 ```js
 const [, , option] 
 // la opcion va a estar definida por verificar o por firmar.
 ```
 Los primeros 2 párametros que no estamos definiendo aquí  son: 
-el proceso de node y el archivo que estamos leyendo, por lo que nosotros empezaremos a leer desde el 3ter argumento.
+el proceso de node y el archivo que estamos leyendo, por lo que nosotros empezaremos a leer desde el tercer argumento.
 
 Luego vamos a pedir el ``secret`` y finalmente vamos a pedir un nombre o un token en nuestro ejemplo, todo esto lo sacamos del process.argv;
 ```js
@@ -141,11 +222,15 @@ Ahora vamos a hacer una prueba:
 
 Una vez generado el JWT vamos a ir [jwt.io](htttps://jwt.io) que es una página donde podemos hacer debuggin del token. Y podemos verificar que está página nos hace una decodificación tál y como lo vimos en el modulo de la anatomía de un JWT.
 
-Ahora vamos usar esté mismo JWT y vamos a usar la utilidad para verificarlo, para eso lo único que debemos hacer es usar la palabra verify y como tercer cuarto parametro le vamos a pasar el secret y por ultimo el token.
+Ahora vamos usar esté mismo JWT y vamos a usar la utilidad para verificarlo, para eso lo único que debemos hacer es usar la palabra ``verify``como tercer parametro y como cuarto párametro le vamos a pasar el secret y por ultimo el token.
 
 ``node index.js verify secret eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqYXNhbiIsImlhdCI6MTU3MDE0NTQ5MH0.1OXIA17Rl2Oy4b8aq68vZL_srFuVsYwPbHWAXurkkoI``
 
 Hay que tener mucho cuidado cuando estamos manipulando la consola, porque sule partirnos el JWT y lo que debemos hacer es ubicarlo en una sola linea.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Server-side vs Client-side sessions
 
@@ -155,15 +240,23 @@ Hay que tener mucho cuidado cuando estamos manipulando la consola, porque sule p
 
 En terminos generales una sesion es una manera de preservar un estado deseado.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ### ¿Qué es una sesion del lado del servidor?
 
 La sesión en el lado del servidor suele ser una pieza de información que se guarda en memoria o en una base de datos y esta permite hacerle seguimiento a la información de autenticación, con el fin de identificar al usuario y determinar cuál es el estado de autenticación. Mantener la sesión de esta manera en el lado del servidor es lo que se considera “statefuful”, es decir que maneja un estado.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ### ¿Qué es una sesión del lado del cliente?
 
-Las SPA (Single-page apps) requieren una manera de saber si el usuario esta autenticado o no. Pero esto no se puede hacer de una manera tradicional porque suelen ser muy desacopladas con el backend y no suelen refrescar la página como lo hacen las aplicaciones renderizadas en el servidor.
+Las [SPA (Single-page apps)](https://es.wikipedia.org/wiki/Single-page_application) requieren una manera de saber si el usuario esta autenticado o no. Pero esto no se puede hacer de una manera tradicional porque suelen ser muy desacopladas con el backend y no suelen refrescar la página como lo hacen las aplicaciones renderizadas en el servidor.
 
-JWT (JSON Web Token) es un mecanismo de autenticación sin estado, lo que conocemos como “stateless”. Lo que significa que no hay una sesión que exista del lado del servidor.
+[JWT (JSON Web Token)](https://es.wikipedia.org/wiki/JSON_Web_Token) es un mecanismo de autenticación sin estado, lo que conocemos como “stateless”. Lo que significa que no hay una sesión que exista del lado del servidor.
 
 La manera como se comporta la sesión del lado del cliente es:
 
@@ -174,66 +267,98 @@ La manera como se comporta la sesión del lado del cliente es:
 5. Si el token expiró lo redireccionamos a la ruta de “login” y actualizamos el estado como “logout”.
 6. Se actualiza la UI para mostrar que el usuario ha cerrado la sesión.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Buenas Prácticas con JWT
 
-### Buenas practicas con JSON Web token
+### Buenas prácticas con JSON Web token
 
 En los últimos años se ha criticado fuertemente el uso de JSON Web Tokens como buena práctica de seguridad. La realidad es que muchas compañías hoy en día los usan sin ningún problema siguiendo unas buenas practicas de seguridad, que aseguran su uso sin ningún inconveniente.
 
 A continuación listaremos unos consejos que se deben tener en cuenta:
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ### Evitar almacenar información sensible
 
-Debido a que los JSON Web tokens son decodificables es posible visualizar la información del payload, por lo que ningún tipo de información sensible debe ser expuesto como contraseñas, keys, etc. Tampoco debería agregarse información confidencial del usuario como su numero de identificación o información medica, ya que como hablamos anteriormente, los hackers pueden usar esta información para hacer ingeniería social.
+Debido a que los JSON Web tokens son decodificables es posible visualizar la información del payload, por lo que ningún tipo de información sensible debe ser expuesta como contraseñas, keys, etc. Tampoco debería agregarse información confidencial del usuario como su número de identificación o información médica, ya que como hablamos anteriormente, los hackers pueden usar esta información para hacer ingeniería social.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ### Mantener su peso lo más liviano posible
 
 Suele tenerse la tentación de guardar toda la información del perfil en el payload del JWT, pero esto no debería hacerse ya que necesitamos que el JWT sea lo más pequeño posible debido a que al enviarse con todos los request estamos consumiendo parte del bando de ancha.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ### Establecer un tiempo de expiración corto
 
-Debido a que los tokens pueden ser robados si no se toman las medidas correctas de almacenamiento seguro, es muy importante que estos tengan unas expiración corta, el tiempo recomendado es desde 15 minutos hasta un maximo de 2 horas.
+Debido a que los tokens pueden ser robados si no se toman las medidas correctas de almacenamiento seguro, es muy importante que estos tengan unas expiración corta, el tiempo recomendado es desde 15 minutos hasta un máximo de 2 horas.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ### Tratar los JWT como tokens opacos
 
 Aunque los tokens se pueden decodificar, deben tratarse como tokens opacos, es decir como si no tuviesen ningún valor legible. Esto es porque desde el lado del cliente no tenemos manera de verificar si la firma es correcta, así que si confiamos en la información decodificada del token, alguien podría introducir un token invalido con otra información a propósito. Lo mejor, es siempre enviar el token del lado del servidor y hacer las verificaciones allí.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ### ¿Donde guardar los tokens?
 
-Cuando estamos trabajando con SPA (Single Page apps) debemos evitar almacenar los tokens en Local Storage o Session Storage. Estos deben ser almacenados en memoria o en una Cookie, pero solo de manera segura y con el flag httpOnly, esto quiere decir que la cookie debe venir del lado del servidor con el token almacenado. Más información:
+Cuando estamos trabajando con [SPA (Single Page apps](https://es.wikipedia.org/wiki/Single-page_application)] debemos evitar almacenar los tokens en [Local Storage](https://developer.mozilla.org/es/docs/Web/API/Window/localStorage) o [Session Storage](https://developer.mozilla.org/es/docs/Web/API/Window/sessionStorage). Estos deben ser almacenados en memoria o en una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)), pero solo de manera segura y con el flag ``httpOnly``, esto quiere decir que la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) debe venir del lado del servidor con el token almacenado. Más información:
 https://auth0.com/docs/security/store-tokens#single-page-apps
 
-### Silent authenticacion vs Refresh tokens
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
-Debido a que es riesgoso almacenar tokens del lado del cliente, no se deberian usar Refresh Tokens cuando se trabaja solo con una SPA. Lo que se debe implementar es Silent Authentication, para ello se debe seguir el siguiente flujo:
+## Silent authenticacion vs Refresh tokens
+
+Debido a que es riesgoso almacenar tokens del lado del cliente, **no se deberian usar Refresh Tokens cuando se trabaja solo con una SPA**. Lo que **se debe implementar es Silent Authentication**, para ello se debe seguir el siguiente flujo:
 
 1. La SPA obtiene un access token al hacer login o mediante cualquier flujo de OAuth.
 2. Cuando el token expira el API retornara un error 401.
 3. En este momento se debe detectar el error y hacer un request para obtener de nuevo un access token.
-4. Si nuestro backend server tiene una sesión valida (Se puede usar una cookie) entonces respondemos con un nuevo access token.
+4. Si nuestro backend server tiene una sesión valida (Se puede usar una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))) entonces respondemos con un nuevo access token.
 
 Más información:
 
 - https://auth0.com/docs/api-auth/tutorials/silent-authentication
 - https://auth0.com/docs/tokens/refresh-token/current
 
-Hay que tener en cuenta que para implementar Silent authentication y Refresh tokens, se require tener un tipo de sesión valida del lado del servidor por lo que en una SPA es posible que sea necesario una especie de backend-proxy, ya que la sesión no debería convivir en el lado del API server.
+Hay que tener en cuenta que para implementar **Silent authentication** y **Refresh tokens**, se require tener un tipo de sesión valida del lado del servidor por lo que en una SPA es posible que sea necesario una especie de **backend-proxy**, ya que **la sesión no debería convivir en el lado del API server**.
 
 En el paso 2, si se esta usando alguna librería para manejo de estado como redux, se puede implementar un middleware que detecte este error y proceda con el paso 3.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## ¿Qué son las cookies y cómo implementar el manejo de sesión?
 
 ### ¿Qué es un cookie?
 
-Una cookie es un archivo creado por un sitio web que tiene pequeños pedazos de datos almacenados en él, su proposito principal es identificar al usuario mediante el almacenamiento de su historial. 
+Una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) es un archivo creado por un sitio web que tiene pequeños pedazos de datos almacenados en él, su proposito principal es identificar al usuario mediante el almacenamiento de su historial. 
 
-Las _cookies de sesión_ o **cookiesSession** tienen un corto tiempo de vida, ya que estas son removidas cuando se cierra el tab o el navegador. 
+Las **_cookies de sesión_ o cookiesSession** tienen un corto tiempo de vida, ya que estas son removidas cuando se cierra el tab o el navegador. 
 
-Las **persistent cookies** ó cookies percisitentes se usan generalmente para restaurar al usuario guardando información de su interes.
+Las **persistent cookies ó cookies percisitentes** se usan generalmente para restaurar al usuario guardando información de su interes.
 
-Las secure cookies almacenan datos de manera cifrada para que terceros mal intencionados no puedan robar la información en el, suelen usarse en conexiones https es decir en conexiones seguras.
+Las **secure cookies** almacenan datos de manera cifrada para que terceros mal intencionados no puedan robar la información en el, suelen usarse en conexiones https es decir en conexiones seguras.
 
-Hay leyes de cookies que debes seguir al pie de la letra:
+**Hay leyes de cookies que debes seguir al pie de la letra**:
 
 - Avisarle al usuario que estás haciendo uso de cookies en tu sitio para guardar información.
 
@@ -242,6 +367,10 @@ Hay leyes de cookies que debes seguir al pie de la letra:
 Si las cookies son necesarias para la autentiación del usuario o para algún problema de seguridad esas leyes no aplican en esté caso.
 
 En esté curso vamos a hacer uso de cookies para almacenar el id de la sessión. 
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ### Implementación de cookies 
 
@@ -266,10 +395,10 @@ const app = express();
 // dentro de él le paso las siguientes sessiones
 app.use(
   session({
-    resave: false, // no guardar la cookies cada vez que hay un cambió
-    saveUninitialized: false, // si la cookies no se inicializado no la guarde por defecto.
+    resave: false, // no guardar la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))s cada vez que hay un cambió
+    saveUninitialized: false, // si la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))s no se inicializado no la guarde por defecto.
     // se define un secret: debe ser de por lo menos 256 bits,
-    // esto es lo que definie de cuando lo cookie es segura va a cifrarla haciendo uso de esté secret.
+    // esto es lo que definie de cuando lo [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) es segura va a cifrarla haciendo uso de esté secret.
     secret: "keyboard cat"
   })
 );
@@ -303,31 +432,35 @@ Con esto ya tenemos una pequeña implementación de nuestra session, ahora lo qu
 }
 ```
 
-Fijense que si hacemos refresh al servidor el empieza a contar, y es porque precisamente está almacenando esté contador en la session. Si abrimos nuestro developer tools y refrescamos de nuevo, nos damos cuenta que en el request siempre se está enviando la cookie. Si nos vamos a **aplication** y eliminamos la cookie de nuestra sesión en esté caso es ``connect.sid``, al eliminarla y refrescar vuelve y empieza el contador de session, y la petición esta vez nos muestra que en el response se esta estableciendo la cookie.
+Fijense que si hacemos refresh al servidor el empieza a contar, y es porque precisamente está almacenando esté contador en la session. Si abrimos nuestro developer tools y refrescamos de nuevo, nos damos cuenta que en el request siempre se está enviando la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)). Si nos vamos a **aplication** y eliminamos la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) de nuestra sesión en esté caso es ``connect.sid``, al eliminarla y refrescar vuelve y empieza el contador de session, y la petición esta vez nos muestra que en el response se esta estableciendo la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)).
 
 Con estó tenemos un ejemplo muy claro de como podemos hacer manejo de la session haciendo uso de cookies.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Cookies vs Session Storage vs Local Storage
 
 El **Local Storage**: tiene un almacenamiento de máximo 5 MB, la información almacenada aquí no se va con cada request que hacemos al servidor, estó nos ayuda a reducir la información entre cliente y servidor, la información que esta almacenada en el local storage persiste aunque cerremos la ventana de nuestro navegador, estó quiere decir que cuando volvemos a nuestro navegador la información la vamos a encontrar ahí.
 
-El **Session Storage**: es similar al _Local Storage_ solo que la información está disponible por tab o por window, esto quiere decir que apenas cerremos un tab o un window la información deja de persistir al igual solo la información que almacenamos en cada tab está disponible en ese mismo tab. 
+El **Session Storage**: es similar al _Local Storage_ solo que **la información está disponible por tab o por window**, esto quiere decir que **apenas cerremos un tab o un window la información deja de persistir** al igual solo la información que almacenamos en cada tab está disponible en ese mismo tab. 
 
 Las **cookies** solo tienen un almacenamiento de 4KB, lo interesante de las cookies es que si se les puede establecer un tiempo de expiración.
 
-Para el _Local Storags_ o _Session Storage_ esto lo tendríamos que hacer programaticamente con Javascript. 
+Para el _Local Storage_ o _Session Storage_ esto lo tendríamos que hacer programaticamente con Javascript. 
 
 Una de las desventajas que tienen las cookies es que por cada petición que se haga al servidor sea de imagenes, html, etc. 
 
 **Las cookies van adjuntas a la petición esto ocaciona un gran consumo de datos cada vez que se hacen las peticiones**.
 
-Finalmente una de sus ventajas es que las cookies se pueden hacer seguras mediante un flag llamado ``htpp-only`` eso permite que la información de la cookie solo sea accedida y modificada en el servidor. 
+Finalmente una de sus ventajas es que las cookies se pueden hacer seguras mediante un flag llamado ``htppOnly`` eso permite que la información de la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) solo sea accedida y modificada en el servidor. 
 
 Finalmente te preguntaras: _¿Cuando debemos usar el uno o el otro?_
 
 - Si la información no es sensible podemos almacenarla en _Local Storage_ o en _Session Storage_.
 - Si la información es medianamente sensible como por ejemplo: nombres de usuario o algunos terminos que puedan identificar al usuario, lo más recomendado es usar el _Session Storage_.
-- Finalmente si la información es muy sensible como contraseñas o JSON Web Tokens, lo más recomendado es almacenarlo en una cookie pero siempre teniendo en cuenta el flag ``http-only``.
+- Finalmente si la información es muy sensible como contraseñas o JSON Web Tokens, lo más recomendado es almacenarlo en una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) pero siempre teniendo en cuenta el flag ``httpOnly``.
 
 Vamos a ver unos ejemplo de como se comporta Local Storage y Session Storage en el navegador.
 
@@ -349,31 +482,35 @@ Fijense que estó lo hicimos desde un ``tab`` abierto en el navegador, y debido 
 
 Está es la manera en como podemos usar ``Session Storage`` y ``Local Storage`` en el navegador.
 
-Challenge: Discutir si fueramos a implementar autenticación que opción entre Cookies y Web Storage sería ideal.
+**Challenge**: Discutir si fueramos a implementar autenticación que opción entre cookies y Web Storage sería ideal.
 
-_Usaría Cookies para guardar la información sensible, y Web Storage para almacenar otra información no sensible. Además la web storage se crea desde el lado del cliente y no del lado de servidor. Cookies definitivamente._
+_Usaría cookies para guardar la información sensible, y Web Storage para almacenar otra información no sensible. Además la web storage se crea desde el lado del cliente y no del lado de servidor. cookies definitivamente._
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Arquitectura del Proyecto VideoCine
 
-En esté modulo aprenderas a como crear una capa de autenticación con express haciendo uso de la librería passportjs. 
+En esté modulo aprenderas a como crear una capa de autenticación con express haciendo uso de la librería **passportjs**. 
 
 Lo primero que vamos a hacer es hablar de la arquitectura del proyecto.
 
-La arquitectura del proyecto depende de una API server que fue construido en backendnodejs de la escuela de Javascript. El API Server tiene un CRUD de peliculas es decir podemos crear, leer, actualizar y eliminar peliculas. Pero en esté repositorio vamos a agregar unos endpoints para hacer sigIn es decir autenticar un usuario, y un endpoint para hacer SignOut es decir para crear nuevos usuarios.
+La arquitectura del proyecto depende de una **API server** que fue construido en backendnodejs de la escuela de Javascript. El API Server tiene un **CRUD** de peliculas es decir podemos **crear, leer, actualizar y eliminar** peliculas. Pero en esté repositorio vamos a agregar unos endpoints para hacer ``sigIn`` es decir autenticar un usuario, y un endpoint para hacer ``signUp`` es decir para crear nuevos usuarios.
 
-Para poder consumir esté endpoint de SignIn los clientes en esté caso **Admin Client** es el que esté debajo de nuestro API Server y el Render Server es el que está en la izquierda, necesitan una API Token, **está API Token es muy diferente a un Access Token** y ya vamos a hablar de sus diferencias.
+Para poder consumir esté endpoint de ``signIn`` los clientes en esté caso **Admin Client** es el que esté debajo de nuestro **API Server** y el **Render Server** es el que está en la izquierda, necesitan una API Token, **está API Token es muy diferente a un Access Token** y ya vamos a hablar de sus diferencias.
 
-Esté API Token lo que nos permite es definir los permisos que vana definir estos clientes, para el caso del Admin Client el API Token le va a conceder unos permisos administrativos es decir unos permisos que va a permitir: leer, crear, actualizar y eleminar peliculas.
+Esté **API Token** lo que nos permite es definir los permisos que van a definir estos clientes, para el caso del Admin Client el API Token le va a conceder unos permisos administrativos es decir unos permisos que va a permitir: leer, crear, actualizar y eliminar peliculas.
 
-Mientras que el Render Server va ha utilizar una API Token con permisos públicos de solo lectura. Cuando el Render Server o el Admin Client haciendo uso de estos diferentes API Tokens hagan la autenticación, toda nuestra estrategia de autenticación va a generar un Access Token esté Acess va ha ser un JSON Web Token que va ha tener la información del usuario que hace autenticación y los permisos determinados por el API Token. 
+Mientras que el **Render Server** va ha utilizar una API Token con permisos públicos de solo lectura. Cuando el Render Server o el Admin Client haciendo uso de estos diferentes API Tokens hagan la autenticación, toda nuestra estrategia de autenticación va a generar un **Access Token** esté Acess va ha ser un **JSON Web Token** que va ha tener la información del usuario que hace autenticación y los permisos determinados por el **API Token**. 
 
-De está manera en las peticiónes siguientes nuestro Render Server o Admin Client con el Access Token que fue generado va a poder consumir los recursos del API Token. Las Single Pages App que va ha estar construida con: React, Vue o Angular, pero en el caso de la escuela de Javascript va ha estar construida con React. La manera en como se va ha comunicar con nuestro API Server va ha ser atravez del Render Server que va ha ser de Proxy, para está arquitectura es muy importante que la SPA tenga un servidor porque toda la comunicación que sucede de los Access Token mediante el API Server, debe ocurrir en el Servidor. 
+De está manera en las peticiónes siguientes nuestro **Render Server o Admin Client** con el Access Token que fue generado va a poder consumir los recursos del API Token. Las Single Pages App que va ha estar construida con: React, Vue o Angular, pero en el caso de la escuela de Javascript va ha estar construida con React. **La manera en como se va ha comunicar con nuestro API Server va ha ser atravez del Render Server** que va ha ser de **Proxy**, para está arquitectura es muy importante que la SPA tenga un servidor porque toda la comunicación que sucede de los Access Token mediante el API Server, debe ocurrir en el Servidor. 
 
-Si tu no tienes un Render-Server es necesario que crees un Server que haga de Proxy entre la SPA y el API Server. La manera en como la SPA se va ha comunicar con el API Server es mediante una cookie que va ha tener el Access Token del Render Server. Vamos a explorar en el código como está construido el API Server que fue hecho en el repositorio del [backendnodejs](https://github.com/JasanHdz/backendnodejs) y también vamos a integrarlo.
+Si tu no tienes un **Render-Server** es necesario que crees un **Server que haga de Proxy entre la SPA y el API Server**. La manera en como la SPA se va ha comunicar con el API Server es mediante una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) que va ha tener el Access Token del Render Server. Vamos a explorar en el código como está construido el API Server que fue hecho en el repositorio del [backendnodejs](https://github.com/JasanHdz/backendnodejs) y también vamos a integrarlo.
 
-El API Server es un proyecto en express que tiene implementado una ruta de peliculas, la ruta de peliculas tiene implentado los diferentes endpoints para poder listar las peliculas: getAll, getId, createMovie, y deleteMovie, además de que el proyecto tiene implementado toda una capa de validación para asegurarnos que los datos que enviemos sean correctos.
+**El API Server**: es un proyecto en express que tiene implementado una ruta de peliculas, la ruta de peliculas tiene **implentado** los diferentes **endpoints** para poder listar las peliculas: ``getAll, getId, createMovie, y deleteMovie``, además de que el proyecto tiene implementado toda una capa de validación para asegurarnos que los datos que enviemos sean correctos.
 
-La responsabilidad de las rutas, en las rutas en esté caso es recibir los datos y devolver los datos de las peliculas, pero donde realmente ocurre la lógica de negocio es en nuestra capa de Servicios que tiene implementado muy similar todo el sistema CRUD.
+La responsabilidad de las rutas, en las rutas en esté caso es recibir los datos y devolver los datos de las peliculas, pero **donde realmente ocurre la lógica de negocio es en nuestra capa de Servicios** que tiene implementado muy similar todo el sistema **CRUD**.
 
 La capa de servicios lo que llamá es la capa de Mongo donde hemos implementado una pequeña librería que atravez de la collection implementa los diferentes métodos de está librería de Mongo.
 
@@ -383,6 +520,10 @@ desarrollo ``npm run dev``
 production ``npm run start``
 
 Es muy probable que tengas que eliminar la carpeta node_modules y volver a correr el comando ``npm install``
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Agregando coleción de usuarios
 
@@ -447,11 +588,15 @@ class UsersService {
 module.exports = UsersService;
 ```
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Agregando colección de películas de usuario
 
 En la clase anterior agregamos el servicio de los usuarios, esto nos va ha permitir obtener usuarios de la base de datos. Ahora vamos a agregar el schema, la ruta y el servicio de las peliculas del usuario.
 
-Esta configuración nos servirá más adelante cuando un usuario cuando un usuario autentique y agregue una pelicula a su lista, lo pueda ver reflejado en la aplicación. 
+Esta configuración nos servirá más adelante cuando un usuario autentique y agregue una pelicula a su lista, lo pueda ver reflejado en la aplicación. 
 
 Procedemos a realizarlo en el código:
 
@@ -492,7 +637,7 @@ class UserMoviesService {
   }
 }
 ```
-Como los usuarios de las peliculas van a ser manipulados de diferentes maneras, vamos a crear unos métodos que serán para obtener las peliculas del usuario, apartir de un userId, también vamos a tener el método que nos va ha permitir crear una pelicula del usuario, esto quiere decir cuando el usuario quiera agregar una pelicula a su lista de favoritos, y finalmente el usuario también va ha poder eliminar una pelicula de su lista de favoritos.
+Como los usuarios de las peliculas van a ser manipulados de diferentes maneras, vamos a crear unos métodos que serán para obtener las peliculas del usuario, apartir de un ``userId``, también vamos a tener el método que nos va ha permitir crear una pelicula del usuario, esto quiere decir cuando el usuario quiera agregar una pelicula a su lista de favoritos, y finalmente el usuario también va ha poder eliminar una pelicula de su lista de favoritos.
 
 ```js
 const Mongo = require('../lib/mongo');
@@ -569,11 +714,14 @@ function userMoviesApi(app) {
 }
 ```
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Implementando el POST y DELETE de las peliculas de usuario
 
-En está clase vamos a continuar con la implementación de las rutas del usuario, esn esta ocación vamos a hacer la implementación de la creación de las peliculas de usuario y la implementación de la eliminación de las peliculas del usuario.
+En está clase vamos a continuar con la implementación de las rutas del usuario, en esta ocación vamos a hacer la implementación de la creación de las peliculas de usuario y la implementación de la eliminación de las peliculas del usuario.
 
-Como ya tenemos nuestro endpoint que nos permite listar las peliculas del usuario, ahora vamos a crear un endpoint, que se encargue de listar las peliculas del usuario.
 
 ```js
 const express = require('express');
@@ -660,9 +808,17 @@ module.exports = userMoviesApi;
 
 Ahora para poder usar nuestra ruta, debemos ir a nuestro archivo ``index.js`` de nuestro proyecto y aquí vamos a hacer uso de nuestra ruta.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Como conectarnos a una base de datos
 
 **MongoDB Compass** es un cliente con interfaz gráfica que nos permiten conectarnos a nuestras instancias de Mongo DB y manipularlas de una manera más fácil. Con este cliente nos podemos conectar a una instancia de cualquier servidor incluso una instancia de MongoDB Atlas.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ### Conexión usando MongoDB Compass
 
@@ -681,10 +837,14 @@ Si nosotros copiamos el Mongo URI desde Mongo Atlas podemos conectarnos facilmen
 <div align="center">
   <img src="./assets/mongodb-compass.jpg" alt="mongo compass">
 </div>
+<br>
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Configuración de Passport.js
 
-En está clase vamos a explorar la configuración inicial de passport.js. PassportJS es un middleware para express que nos permite implementar distitas estrategias de autenticación de una manera muy fácil y simple.
+En está clase vamos a explorar la configuración inicial de passport.js. **PassportJS es un middleware para express que nos permite implementar distitas estrategias de autenticación de una manera muy fácil y simple**.
 
 1. Primero vamos a instalar nuestras dependencias 
 ``npm i passport jsonwebtoken passport-http passport-jwt``
@@ -698,38 +858,40 @@ Otra librería que necesitamos instalar pero esta vez en modo desarrollo es una 
 Lo otro que necesitamos para nuestros scripts que vamos  ejecutar más adelante y es donde precisamente vamos a utilizar nuestra librería chalk, es agregar en nuestro archivo ``.env`` y ``.env.example`` las siguientes variables de entorno:
 
 Por defecto vamos a agregar los siguientes valores, igual ustedes pueden agregar algún otro.
-``
+
+
+```
 # USERS
 DEFAULT_ADMIN_PASSWORD=root
 DEFAULT_USER_PASSWORD=secret
-``
+```
 
 Estás variables de entorno van ha ser necesarias para cuando estemos incertando nuestros usuarios iniciales, no estemos definiendo un password por defecto en el código, si no que sea un password diferente para cada aplicación que estemos creado, en esté caso vamos a generar un password por defecto para el administrador y un password por defecto para estos usuarios iniciales.
 
-Lo otro que vamos a necesitar es definir el secret que vamos a necesitar para firmar nuestros JWT, esté secret si lo debería sacar de una página que se llama: [keygen.io](https://keygen.io/). Está página lo que nos permite es definir un key de base 264 bits, nosotros vamos a buscar nuestro string de ``256 bits``, lo copiamos y en nuestro código lo agregamos. 
+Lo otro que vamos a necesitar es definir el **secret** que vamos a necesitar para firmar nuestros JWT, **esté secret se debería sacar de una página que se llama**: [keygen.io](https://keygen.io/). Está página lo que nos permite es definir un key de base 264 bits, nosotros vamos a buscar nuestro string de ``256 bits``, lo copiamos y en nuestro código lo agregamos. 
 
-``
+```
 # AUTH
 AUTH_JWT_SECRET=FC6xnhTSEKlt0mNHjw4fucpzqg2e5M9B
-``
+```
 
-Otra cosa que vamos a definir es cuales van a ser sus API_KEYS, recuerden que nuestros API_KEY es lo que nos va ha permitir definir que cuando haya un login con alguno de nuestro clientes, es decir el Render-Server o nuestro cliente Administrativo, le otorge los permisos. En esté caso esos API_KEYS van ha ser generados aleatoriamente apartir de nuestros scripts, teniendo en cuenta estas variables de entorno nos aseguramos de tenerlas en nuestro archivo ``.env``.
+Otra cosa que vamos a definir es cuales van a ser sus ``API_KEYS``, recuerden que nuestros ``API_KEY`` es lo que nos va ha permitir definir que cuando haya un login con alguno de nuestro clientes, es decir el **Render-Server o nuestro cliente Administrativo**, le otorge los permisos. En esté caso esos ``API_KEYS`` van ha ser generados aleatoriamente apartir de nuestros scripts, teniendo en cuenta estas variables de entorno nos aseguramos de tenerlas en nuestro archivo ``.env``.
 
-``
+```
 # API KEY
 PUBLIC_API_KEY_TOKEN=
 ADMIN_API_KEY_TOKEN=
-``
+```
 
 Nos aseguramos que nuestro archivo ``.env.example`` no tenga ningun valor porque esto es la referencia que va ha usar el desarrollador para llenar su archivo ``.env``, procedemos a copiar está misma configuración en nuestro archivo de configuración de variables de entorno.
 
-``
+```js
   defaultAdminPassword: process.env.DEFAULT_ADMIN_PASSWORD,
   defaultUserPassword: process.env.DEFAULT_USER_PASSWORD,
   authJwtSecret: process.env.AUTH_JWT_SECRET,
   publicApiKeyToken: process.env.PUBLIC_API_KEY_TOKEN,
   adminApiKeyToken: process.env.ADMIN_API_KEY_TOKEN
-``
+```
 La estrategia que ocupe en VS code es agregar el cursos al final de la linea, copie y pegue y use una librería para convertir los strings a camel Case.
 
 Teniendo en cuenta estos archivo de configuración lo que voy a hacer es copiar unos scipts que yo cree previamente, los voy a pegar en mi API Server
@@ -895,13 +1057,17 @@ async function seedApiKeys() {
 seedApiKeys();
 ```
 
-Los API KEYS los necesitamos en nuestras variables de entorno, por lo que una vez creados nuestros api keys en la base de datos de mongo, procedemos a copiarlos y incluirlos en nuestro archivo ``.env``
+Los ``API_KEYS`` los necesitamos en nuestras variables de entorno, por lo que una vez creados nuestros api keys en la base de datos de mongo, procedemos a copiarlos y incluirlos en nuestro archivo ``.env``
 
-De está manera ya hemos creado una serie de peliculas, unos usuarios y los API TOKENS necesarios donde vamos a hacer uso de nuestra estrategia de autenticación con passport.js 
+De está manera ya hemos creado una serie de peliculas, unos usuarios y los **API TOKENS** necesarios donde vamos a hacer uso de nuestra estrategia de autenticación con ``passport.js`` 
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Implementación de BasicStrategy con Passport.js
 
-En esta clase aprenderás como implementar estrategias de autenticación haciendo uso de Passport.js. Las estrategias de autenticación nos sirven para determinar como nos vamos a autenticar, haciendo uso de estas estrategias en las diferentes rutas y así definir de donde saldra el usuario que vamos a usar de ahí en adelante, vamos a verlo como se hace en el código.
+En esta clase aprenderás como implementar estrategias de autenticación haciendo uso de ``Passport.js``. Las estrategias de autenticación nos sirven para determinar como nos vamos a autenticar, haciendo uso de estas estrategias en las diferentes rutas y así definir de donde saldra el usuario que vamos a usar de ahí en adelante, vamos a verlo como se hace en el código.
 
 1. Vamos a crear una nueva carpeta dentro de ``utils`` llamada ``auth/strategies/basic.js``, aquí es donde vamos a implementar nuestra estrategia de tipo Basic.
 
@@ -944,6 +1110,10 @@ passport.use(
 ```
 
 Con esto ya tenemos implementada nuestra estrategia Basic, esto quiere decir que cuando se la agreguemos como middleware a una ruta, si hacen una petición de una autenticación basic, va ha pode extraer a traves de email y password, el usuario y apartir de ahi definir quien está autenticado en nuestra aplicación.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Implementación de Strategy y ExtractJwt con Passport.js
 
@@ -1003,14 +1173,33 @@ passport.use(
 );
 ```
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Implementación de nuestro Sign-in
 
 Ya que hemos implementado nuestras estrategias, ahora vamos a implementar la ruta de Sign In.
 
-1. Ante de implementar nuestra ruta debemos crear un nuevo servicio, llamado ``apiKeys.js``, esté servicio nos va ha permitir que apartir de un API-Key-Token podamos obtener los scopes que es requerido a la hora de hacer Sign In a la hora de firmar un JWT con los scopes correspondientes deacuerdo al API Token que nosotros enviemos.
+1. Antes de implementar nuestra ruta debemos crear un nuevo servicio, llamado ``apiKeys.js``, esté servicio nos va ha permitir que apartir de un ``API-Key-Token`` podamos obtener los scopes que es requerido a la hora de hacer Sign In a la hora de firmar un JWT con los scopes correspondientes deacuerdo al API Token que nosotros enviemos.
 
 ```js
+const MongoLib = require('../lib/mongo');
 
+class ApiKeysService {
+  constructor() {
+    this.collection = "api-keys";
+    this.mongoDB = new MongoLib();
+  }
+
+  async getApiKey({ token }) {
+    const [apikey] = await this.mongoDB.getAll(this.collection, { token });
+    return apikey;
+  }
+
+}
+
+module.exports = ApiKeysService; 
 ```
 
 2. Ahora creamos una nueva ruta que se va ha llamar ``auth.js``
@@ -1109,14 +1298,18 @@ module.exports = authApi;
 
 3. Ahora nos vamos a nuestro archivo ``index.js`` y agregamos la nueva ruta que acabamos de crear.
 
-4. Levantamos el servidor y toca ir a probar nuestra ruta de signIn usando Postman.
+4. Levantamos el servidor y toca ir a probar nuestra ruta de ``signIn`` usando Postman.
 
 Vamos a hacer un request de tipo POST a la ruta 
-``localhost:300/api/auth/sign-in/`` en el vamos a hacer una ``Authorization`` de tipo ``Basic Auth``. Y en el body tenemos que enviar el API_TOKEN el cual copiamos de nuestro archivo ``.env``.
+``localhost:300/api/auth/sign-in/`` en el vamos a hacer una ``Authorization`` de tipo ``Basic Auth``. Y en el body tenemos que enviar el ``API_TOKEN`` el cual copiamos de nuestro archivo ``.env``.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Implementación de nuestro Sign Up
 
-En el modulo pasado implementamos la ruta de Sign-in, al autenticar estamos devolviendo los scopes de api-token en el JWT, en esté modulo vamos a implementar la ruta de Sign-up.
+En el modulo pasado implementamos la ruta de ``sign-in``, al autenticar estamos devolviendo los scopes de api-token en el JWT, en esté modulo vamos a implementar la ruta de ``sign-up``.
 
 1. En nuestro archivo ``routes/auth.js`` vamos a importar el ``UsersService.js`` porque con esté vamos a usar el método para crear usuarios el cual está úbicado en la carpeta de ``services``, también como necesitamos validar que los datos del usuario son correctos vamos a importar el ``validationHandler.js`` que está en la ruta de ``../movies-api/utils/middleware/validationHandler`` y finalmente necesitamos el schema de crear usuario para lo cuál igual tenemos que importar el ``{createUserSchema} = require('../movies-api/utils/schemas/users')``.
 
@@ -1146,7 +1339,11 @@ En el modulo pasado implementamos la ruta de Sign-in, al autenticar estamos devo
 
 2. Ahora vamos a Postman y creamos el usuario enviandolo por el body como un JSON.
 
-Cuando el usuario halla sido creado incluso podemos hacer un sign in para verificar que se hallá creado correctamente y nos devolverá el token con la información del usuario.
+Cuando el usuario halla sido creado incluso podemos hacer un ``sign in`` para verificar que se hallá creado correctamente y nos devolverá el token con la información del usuario.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Protegiendo nuestras rutas con Passport.js 
 
@@ -1195,13 +1392,17 @@ passport.authenticate('jwt', {session: false}),
 
 Que nos permite proteger las otras rutas.
 
-Ahora levantamos nuestro servidor en modo desarrollo y vamos a postman. Si ahora hacemos un GET movies desde postman ahora nos dice que no estamos autorizados, ahora tenemos que hacer sign-in para que nos devuelva un token y lo que debemos de hacer es que cada vez que queramos llamar nuestras rutas que ya estan protegidas, debemos de ir al tab de autorización, definir que vamos a autorizarnos con **Bearer Token** y agregar nuestro Access Token en el campo Token, de está manera si ahora llamo las rutas de las peliculas ahora si nos devuelve datos, y lo mismo pasa con las demás rutas a las que autenticamos usando ``passport.js`` 
+Ahora levantamos nuestro servidor en modo desarrollo y vamos a postman. Si ahora hacemos un GET movies desde postman ahora nos dice que no estamos autorizados, ahora tenemos que hacer ``sign-in`` para que nos devuelva un token y lo que debemos de hacer es que cada vez que queramos llamar nuestras rutas que ya estan protegidas, **debemos de ir al tab de autorización**, definir que vamos a autorizarnos con **Bearer Token** y agregar nuestro **Access Token** en el campo Token, de está manera si ahora llamo las rutas de las peliculas ahora si nos devuelve datos, y lo mismo pasa con las demás rutas a las que autenticamos usando ``passport.js`` 
 
-Con esto hemos cerrado prácticamente todo el ciclo de autenticación, ya tenemos todo el flujo de hacer Sign-in y tenemos todo el flujo de hacer Sign-up y finalmente tenemos protegidas nuestras rutas de la API.
+Con esto hemos cerrado prácticamente todo el ciclo de autenticación, ya tenemos todo el flujo de hacer ``sign-in`` y tenemos todo el flujo de hacer ``sign-up`` y finalmente tenemos protegidas nuestras rutas de la API.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Implementando recordar sesión
 
-Generalmente cuando queremos implementar la opción de recordar sesión para Express mediante passport, lo que hacemos es extender la expiración de la Cookie.
+Generalmente cuando queremos implementar la opción de recordar sesión para Express mediante passport, lo que hacemos es extender la expiración de la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)).
 
 En nuestra ruta de sign-in de nuestro render server hacemos las siguientes modificaciones:
 
@@ -1229,7 +1430,7 @@ app.post("/auth/sign-in", async function(req, res, next) {
 
         // Si el atributo rememberMe es verdadero la expiración será en 30 dias
         // de lo contrario la expiración será en 2 horas
-        res.cookie("token", token, {
+        res.[cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))("token", token, {
           httpOnly: !config.dev,
           secure: !config.dev,
           maxAge: rememberMe ? THIRTY_DAYS_IN_SEC : TWO_HOURS_IN_SEC
@@ -1243,6 +1444,10 @@ app.post("/auth/sign-in", async function(req, res, next) {
   })(req, res, next);
 });
 ```
+<br>
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Middleware para el manejo de scopes
 
@@ -1281,9 +1486,11 @@ Ahora nos dirigimos a nuestras rutas, y todas nuestras rutas deben ser validadas
 const scopesValidationHandler = require('../utils/middleware/scopesValidationHandler');
 ```
 
-Ahora debo definir los scopes de las diferentes rutas, despues de que verifico con el middleware de que está autenticado, entonces indico cuál es el scope necesario, para el de ``getMovies`` el scopes necesario es ``[read:movies]``, es decir si el usuario tiene el scope de ``[read:movies]`` podrá leer las peliculas, para el ``getMovieId`` necesita el mismo scope, para el ``createMovie`` necesita el scope de ``['create:movies']``, entonces fijense que si tenemos unos scopes públicos no vamos a poder consumir nuestra ruta de crear peliculas, luego del ``put o updateMovies`` necesitaríamos el scope de ``['update:movies']`` y para el endpoint de ``deleteMovies`` necesitaríamos el scope de ``['deleted:movies']``.
+Ahora debo definir los scopes de las diferentes rutas, despues de que verifico con el **middleware** de que está autenticado, entonces indico cuál es el scope necesario, para el de ``getMovies`` el scopes necesario es ``[read:movies]``, es decir si el usuario tiene el scope de ``[read:movies]`` podrá leer las peliculas, para el ``getMovieId`` necesita el mismo scope, para el ``createMovie`` necesita el scope de ``['create:movies']``, entonces fijense que si tenemos unos scopes públicos no vamos a poder consumir nuestra ruta de crear peliculas, luego del ``put o updateMovies`` necesitaríamos el scope de ``['update:movies']`` y para el endpoint de ``deleteMovies`` necesitaríamos el scope de ``['deleted:movies']``.
 
-Tanto ``passport.authenticate``, ``scopesValidationHandler`` y ``validationHandler`` son middlewares. El proposito de los middlewares es filtrar e intervenir el código ``request`` que viene desde la ruta o endpoint hasta que ya hacemos su funcionalidad y tratamos los suficientes datos, entonces esto nos permite en esté caso: validar la autenticación, despues validar que tenga los permisos necesarios, y por último validar que los datos esté correctos.
+Tanto ``passport.authenticate``, ``scopesValidationHandler`` y ``validationHandler`` son middlewares. 
+
+**El proposito de los middlewares es filtrar e intervenir el código** ``request`` que viene **desde la ruta o endpoint hasta que ya hacemos su funcionalidad** y tratamos los suficientes datos, entonces esto nos permite en esté caso: validar la autenticación, despues validar que tenga los permisos necesarios, y por último validar que los datos esté correctos.
 
 Haremos lo mismo para nuestros datos de ``userMovies``.
 
@@ -1298,12 +1505,16 @@ scopesValidationHandler(['delete:movies']),
 
 Ahora levantamos el servidor en modo desarrollo y nos dirigiremos a postman a verificar que estó este funcionando correctamente. Antes de hacer request a nuestras diferentes rutas y verificar que nuestras variables de entorno para verficar que estemos ocupado la variable de entorno correcta.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Configuración del Server Render
 
-En está clase vamos a explorar la configuración del render server. Recuerda que en clase de arquitectura del proyecto teníamos un diagrama donde teníamos que el API Server era consumido por 2 clientes, uno de esos clientes era el Admin Client que es el que usa los Scopes Administrativos y el otro cliente es el Render Server que usa los scopes públicos, en está clase vamos ver cual es la estructura base de esté Render Server.
+En está clase vamos a explorar la configuración del render server. Recuerda que en clase de arquitectura del proyecto teníamos un diagrama donde teníamos que **el API Server era consumido por 2 clientes**, uno de esos clientes era el Admin Client que es el que usa los Scopes Administrativos y el otro cliente es el Render Server que usa los scopes públicos, en está clase vamos ver cual es la estructura base de esté Render Server.
 
-En el repositorio del curso hemos agregado una nueva carpeta llamada ``ssr-server`` eso significa ``server side render``. Está carpeta tiene unas nuevas variables de entorno que son: el puerto, la url del ``api-server`` y el 
-``PUBLIC_API_KEY_TOKEN``, esté API-Token debe ser exactamente igual al api-key token que tenemos en nuestra API. 
+En el repositorio del curso hemos agregado una nueva carpeta llamada ``ssr-server`` eso significa ``server side render``. Está carpeta tiene unas nuevas variables de entorno que son: ``el puerto``, ``la url`` del ``api-server`` y el 
+``PUBLIC_API_KEY_TOKEN``, **esté API-Token debe ser exactamente igual al api-key token que tenemos en nuestra API**. 
 
 Lo otro que hemos agregado a la configuración son estás mismas variables de entorno.
 
@@ -1357,15 +1568,19 @@ app.listen(config.port, function () {
 });
 ```
 
-Lo que vamos a hacer en esté proyecto es levantar las rutas de sign-in, sign-up, creación de las peliculas de usuario y eliminación de las peliculas de usuario, está 2 rutas van ha hacer la acción cuando el usuario en la interfaz gráfica agregue o elimine peliculas de su lista, lo que quedará pendiente será la opción de listar las peliculas, esto lo vamos a ver en el curso de **backend for fronted** de la escuela de JS. 
+Lo que vamos a hacer en esté proyecto es levantar las rutas de ``sign-in``, ``sign-up``, creación de las peliculas de usuario y eliminación de las peliculas de usuario, está 2 rutas van ha hacer la acción cuando el usuario en la interfaz gráfica agregue o elimine peliculas de su lista, lo que quedará pendiente será la opción de listar las peliculas, esto lo vamos a ver en el curso de **backend for fronted** de la escuela de JS. 
 
-Lo que podemos a intuir acá es que nosotros vamos a ocupar esté nuevo servidor como una especie de proxy, y todas estás llamadas van a ser llamadas a la API-Server y lo que vamos a hacer con el Sign-in es que el toke que nos regrese lo vamos a inyectar en una cookie y apartir de ahí las otras rutas van ha leer el valor de esa cookie, de está manera vamos a tener una forma muy segura en nuestra Single Pages App el JWT protegido.
+Lo que podemos intuir acá es que **nosotros vamos a ocupar esté nuevo servidor como una especie de proxy, y todas estás llamadas van a ser llamadas a la API-Server** y lo que vamos a hacer con el ``sign-in`` es que el token que nos regrese lo vamos a inyectar en una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) y apartir de ahí las otras rutas van ha leer el valor de esa [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)), de está manera vamos a tener una forma muy segura en nuestra **Single Pages App** el **JWT** protegido.
 
 Con estó hemos explorado las bases de nuestro Render Server, recuerda que si quieres ver toda la implementación completa debes de ver el curso de ``Server Side Render con express`` de la escuela de Javascript, y que despues veas el el curso de ``Backend for frontend`` de la escuela de JS, donde verás la implementación de la ruta de peliculas.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Comunicación máquina a máquina 
 
-En esta clase vamos a implementar la estrategia de autenticación del sign-in y sign-up de nuestro Render Server.
+En esta clase vamos a implementar la estrategia de autenticación del ``sign-in`` y ``sign-up`` de nuestro Render Server.
 
 1. En nuestro proyecto del render server lo primero que vamos a hacer es crear un nuevo archivo para implementar nuestra estrategia _Basic_ lo crearemos en: ``utils/auth/strategies/basic.js``.
 
@@ -1412,7 +1627,7 @@ También vamos a necesitar una nueva librería que se va ha llamar ``cookiesPars
 const express = require('express');
 const passport = require('passport');
 const boom = require('@hapi/boom');
-const cookieParser = require('cookie-parser');
+const [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))Parser = require('[cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))-parser');
 const axios = require('axios');
 
 const { config } = require('./config/index');
@@ -1421,7 +1636,7 @@ const app = express();
 
 // middlewares
 app.use(express.json()); // body parser 
-app.use(cookieParser()); // cookie-parser
+app.use([cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))Parser()); // [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))-parser
 
 // Basic Strategy
 require('./utils/auth/strategies/basic');
@@ -1441,7 +1656,7 @@ app.post("/auth/sign-in", async function (req, res, next) {
         const { token , ...user } = data;
 
       
-        res.cookie("token", token, {
+        res.[cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))("token", token, {
           httpOnly: !config.dev,
           secure: !config.dev
         });
@@ -1473,6 +1688,10 @@ app.post("/auth/sign-up", async function (req, res, next) {
 });
 ```
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Implementación de las peliculas de usuario
 
 En está clase vamos a hacer la implementación de las rutas de las peliculas de usuario.
@@ -1483,11 +1702,11 @@ Para ello nos dirigimos a nuestras rutas de movies de usuario.
 app.post('/user-movies', async function (req, res, next) {
   try {
     const { body: userMovie } = req;
-    const { token } = req.cookies;
+    const { token } = req.[cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))s;
 
-    // cuando hacemos sign-in generamos un JWT que lo guardamos en una cookie,
+    // cuando hacemos sign-in generamos un JWT que lo guardamos en una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)),
     // apartir de ahí los req que hagamos en las peliculas de usuarios, entonces
-    // van ha tener la cookie en el req. Es por eso que podemos sacar de las cookies el token
+    // van ha tener la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) en el req. Es por eso que podemos sacar de las [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))s el token
     // para llamar a nuestra API
 
     const { data, status } = await axios({
@@ -1512,11 +1731,11 @@ app.post('/user-movies', async function (req, res, next) {
 app.delete("/user-movies/:userMovieId", async function (req, res, next) {
   try {
     const { userMovieId } = req.params;
-    const { token } = req.cookies;
+    const { token } = req.[cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))s;
 
-    // cuando hacemos sign-in generamos un JWT que lo guardamos en una cookie,
+    // cuando hacemos sign-in generamos un JWT que lo guardamos en una [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)),
     // apartir de ahí los req que hagamos en las peliculas de usuarios, entonces
-    // van ha tener la cookie en el req. Es por eso que podemos sacar de las cookies el token
+    // van ha tener la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) en el req. Es por eso que podemos sacar de las [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))s el token
     // para llamar a nuestra API
 
     const { data, status } = await axios({
@@ -1538,49 +1757,66 @@ app.delete("/user-movies/:userMovieId", async function (req, res, next) {
 });
 ```
 
-Ahora pasamos a revizar nuestros endpoints en postman, lo primero que debemos de hacer es levantar nuestros 2 servers. ¿Por qué los 2 servers? porque ahora no solo tenemos que levantar el render server, si no que también debemos levantar el Api Server.
+Ahora pasamos a revizar nuestros endpoints en postman, lo primero que debemos de hacer es levantar nuestros 2 servers. 
 
+**¿Por qué los 2 servers?** 
 
+porque ahora no solo tenemos que levantar el ``render server``, si no que también debemos levantar el ``Api Server``.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## ¿Qué es OAuth 2.0?
 
 Estos estandares nos permiten implementar cosas como autenticación con redes sociales. 
 
-- [OAuth 2.0](): Es un estandart de la industria que nos permite implementar autorización, recuerda que ya conoces la diferencia entre **autorización** y **autenticación**. 
+- [OAuth 2.0](): Es un estandar de la industria que nos permite implementar autorización. 
 
 
 <div align="center">
   <img src="./assets/oauth.png" alt="oauth2.0">
 </div>
+<br>
 
-Lo más importante para aprender a implementar OAuth es entender cuales son los roles envueltos en los flujos, en esté caso el primer rol sería el usuario **Resource Owner**, en esté caso podrías ser tú, luego tenemos el **Resource Server** que sería una API donde están tus recursos o tus datos, luego tenemos el aplication o el **Client** quien es que intentar acceder a estos recursos en nombre del usuario y finalmente tenemos el **Authorization Server** qué es quien se encarga de verificar la identidad del usuario. 
+Lo más importante para aprender a implementar OAuth es entender cuales son los roles envueltos en los flujos, en esté caso el **primer rol** sería el usuario **Resource Owner**, en esté caso podrías ser tú, luego tenemos el **Resource Server** que sería una API donde están tus recursos o tus datos, luego tenemos el aplication o el **Client** quien es que intentar acceder a estos recursos en nombre del usuario y finalmente tenemos el **Authorization Server** qué es quien se encarga de verificar la identidad del usuario. 
 
 <div align="center">
   <img src="./assets/appclient-oauth.png" alt="oauth2.0">
 </div>
+<br>
 
-El flujo empieza cuando la aplicación quiere hacer una Authorization Request, entonces tu como usuario tienes que permitirle a la aplicación acceder a tus recursos, esto lo hace mediante una Authorization Grant. La aplicación con esté Authorization Grant va ha la Autorization Server, el verifica que los datos son correctos y te crea un Access Token, el Access Token puede ser un token como cualquiera o podría ser un JWT, apartir de ahí la aplicación con ese Access Token puede hacer cualquier petición y obtener recursos en tu nombre, entonces el Resource Server que sería la API, lo que haría sería devolver los recursos protegidos, gracias a que tu le enviaste un Access Token.
+El flujo empieza cuando la aplicación quiere hacer una **Authorization Request**, entonces tu como usuario tienes que permitirle a la aplicación acceder a tus recursos, esto lo hace mediante una **Authorization Grant**. La aplicación con esté Authorization Grant va ha la **Autorization Server**, el verifica que los datos son correctos y te crea un Access Token, el **Access Token** puede ser un **token** como cualquiera o podría ser un JWT, apartir de ahí la aplicación con ese Access Token puede hacer cualquier petición y obtener recursos en tu nombre, entonces el **Resource Server** que sería la **API**, lo que haría sería devolver los recursos protegidos, gracias a que tu le enviaste un Access Token.
 
 Aquí tenemos un ejemplo del mundo real:
 
 <div align="center">
   <img src="./assets/oauth-exmaple.png" alt="Ejemplo de como funciona Oauth2.0">
 </div>
+<br>
 
 _"supongamos que el cliente es tu hermano, tu hermano quiere acceder a la pelota que está en el closet, el closet sería el **Resource Server**, pero tú no te encuentras en casa, sin embargo tus padres se encuentran en casa, entonces el hermano lo que haría sería pedirte una autorización, tú lo que podrías enviar como **Autorization Grant** sería una carta donde tu hermano está permitido en obtener la pelota, tu hermano con esa carta lo que aría sería ir con el **Autorization Server** que serían tus padres, tus padres verifican que sea una carta con tu letra, y les darían las llaves en esté caso sería el **Access Token** ahora tu hermano con las llaves puede acceder al closet y obtener la pelota"_.
 
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## ¿Qué es OpenID Connect?
 
-Resulta que openID Connect es una capa de autenticación que funciona sobre la capa de Oauth. Lo que sucedio es que las compañias que estaban implementando Oauth para autenticar, estaban teniendo problemas de seguridad, **facebook** hace tiempo tuvo problemas donde podía suplantar la identidad porque estaban usando Access Token para hacer todo el proceso de Autenticación, entonces facebook tuvo que hacer unas soluciones sobre esa capa de Oauth y lo que pasó es que las otras empresas entonces también tuvieron que empezar a implementar esos fixes.
+<span style="color:blue;font-weight:bold">Open ID Connect</span>: **es una capa de autenticación que funciona sobre la capa de Oauth**. Lo que sucedio es que las compañias que estaban implementando Oauth para autenticar, estaban teniendo problemas de seguridad. **Facebook** hace tiempo tuvo problemas donde podía suplantar la identidad porque estaban usando Access Token para hacer todo el proceso de Autenticación, entonces **facebook tuvo que hacer unas soluciones sobre esa capa de Oauth** y lo que pasó es que las otras empresas entonces también tuvieron que empezar a implementar esos fixes.
 
-OpenID Connect se trata de generar uno estandart así no todas las personas no tienen que hacer su propia versión de autenticación sobre Oauth.
+OpenID Connect se trata de generar uno estandar así no todas las personas no tienen que hacer su propia versión de autenticación sobre Oauth.
 
-Las diferencias que tiene sobre Oauth es que los access token se usan exclusivamente para los llamados a la API es decir para obtener los recursos, y entra un concepto llamado **IdToken**, es un nuevo token que nos permite verificar si el usuario está autenticado y nos permite también obtener la información del usuario, básicamente Open Id Connect también define unos ``cleams`` y unos ``scopes`` definidos para esté **IdToken** y debemos también implementar un endpoint llamado **userInfo** donde enviamos el ``idToken`` y podemos obtener la información del usuario. 
+Las diferencias que tiene sobre Oauth es que **los access token se usan exclusivamente para los llamados a la API es decir para obtener los recursos**, y entra un concepto llamado **IdToken**, es un nuevo token que nos permite verificar si el usuario está autenticado y nos permite también obtener la información del usuario, básicamente Open Id Connect también define unos ``cleams`` y unos ``scopes`` definidos para esté **IdToken** y debemos también implementar un endpoint llamado **userInfo** donde enviamos el ``idToken`` y podemos obtener la información del usuario. 
 
 **Open Id Connect** también define como debemos hacer uso del manejo de sesión es decir como se debe hacer ``logout`` como se implementan cosas como ``single signInOut``, etc.
 
 El flujo es mas o menos el siguiente: se hace un request a ``/authorizate`` y esté nos genera un IdToken, este IdToken debe tener definidos los scopes de ``openId`` y ``profile``, con esté IdToken entonces ya sabemos que el usuario está autenticado y finalmente podemos hacer un request a ``/user-info`` y obtener la información del usuario.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Cómo crear un proyecto en Google API para hacer autenticación con 0Auth 2.0
 
@@ -1594,10 +1830,13 @@ Con el fin de poder usar Google como método de autenticación es necesario crea
 6. El Application Name del Consent Screen será ``Platzi Videos``.
 7. Al finalizar la creación copiamos el Client ID y Client secret que seran usados como GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET respectivamente.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Implementando 0Auth2.0 con Google
 
-Recuerda que de la lectura anterior debemos obtener el GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET. 
+Recuerda que de la lectura anterior debemos obtener el ``GOOGLE_CLIENT_ID`` y ``GOOGLE_CLIENT_SECRET``. 
 
 Estós valores los vamos a poner en nuestro documento de variables de entorno, aparte de ahi también tenemos que agregarlos en nuestro archivo de configuración.
 
@@ -1710,7 +1949,7 @@ app.get(
 
     const { token, ...user } = req.user;
 
-    res.cookie("token", token, {
+    res.[cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))("token", token, {
       httpOnly: !config.dev,
       secure: !config.dev
     });
@@ -1723,6 +1962,10 @@ app.listen(config.port, function () {
   console.log(`Listening http://localhost:${config.port}`);
 });
 ```
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Implementando Sign Provider en nuestra API
 
@@ -1766,7 +2009,7 @@ module.exports = {
 };
 ```
 
-Porque ahora el userSchema lo necesitamos solo para hacer un nuevo schema que se va ha llamar ``createProviderUserSchema``
+Porque ahora el ``userSchema`` lo necesitamos solo para hacer un nuevo schema que se va ha llamar ``createProviderUserSchema``
 
 Con esto ya podemos implementar nuestr ruta, y vamos a la ruta de autenticación. Necesitamos agregar nuestro nuevo ``createProviderUserSchema`` y al final vamos a agregar una nueva ruta post.
 
@@ -1813,9 +2056,13 @@ Con esto ya podemos implementar nuestr ruta, y vamos a la ruta de autenticación
     );
 ```
 
-Con esto ya tenemos implementando toda nuestra ruta de Sign Provider, ahora vamos a revizar que todo esté funcionando correctamente, primero levantamos nuestros 2 Servidores, el de API y el del SSR y dirigirnos a la URL ``http://localhost:8000/auth/google-oauth``, hacemos la prueba, despues nos pide acceder a una cuenta de google, si todo sale bien se va ha ir el callback y me va ha devolver el usuario, no solo eso si no que en nuestras cookies de la aplicación vamos a tener la cookie con el token.
+Con esto ya tenemos implementando toda nuestra ruta de ``Sign Provider``, ahora vamos a revizar que todo esté funcionando correctamente, primero levantamos nuestros 2 Servidores, el de API y el del SSR y dirigirnos a la URL ``http://localhost:8000/auth/google-oauth``, hacemos la prueba, despues nos pide acceder a una cuenta de google, si todo sale bien se va ha ir el callback y me va ha devolver el usuario, no solo eso si no que en nuestras cookies de la aplicación vamos a tener la [cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica)) con el token.
 
 Exploremos si el JWT es el token que esperamos, nos vamos a [jwt.io](jwt.io), copiamos el token para que sea decodificado y efectivamente acá tenemos nuestro usuario, email y los scopes que le definimos a nuestro usuario. Con esto hemos terminado la implementación haciendo la autenticación con google en nuestro render server.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Autenticación con Google usando OpenID Connect
 
@@ -1886,7 +2133,7 @@ app.get(
 
     const { token, ...user } = req.user;
 
-    res.cookie("token", token, {
+    res.[cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))("token", token, {
       httpOnly: !config.dev,
       secure: !config.dev
     });
@@ -1897,6 +2144,10 @@ app.get(
 ```
 
 Con esto tenemos nuestra implementación de autenticación con Google pero mucho más sencilla.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Cómo crear una cuenta de desarrollador con Twitter
 
@@ -1913,11 +2164,15 @@ Cuando la cuenta ha sido aprobada, entonces procederemos a crear una aplicación
 7. Hacemos click en Create, accedemos a los detalles de la app creada y en el tab de Permissions, y luego en Additional permissions marcamos Request email address from users y guardamos.
 8. Nos vamos al tab de Keys and tokens y copiamos los Consumer API Keys que son los que usaremos como TWITTER_CONSUMER_KEY y TWITTER_CONSUMER_SECRET respectivamente.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Autenticación con Twitter
 
-De la lectura anterior debemos copiar el consumer_key y el consumer_secret de twitter, es importante copiarlos en nuestro archivo ``.env`` y además también debemos crear un string de session, ya que esté middleware de passport con twitter necesita tener una session activa, a mi me gusta usar una página que se llama [keygen.io](keygen.io) donde podemos copiar un SHA KEY de 256 bits, lo copiamos y lo incluimos en nuestro secret de session también es importante leerlos desde nuestro archivo de configuración para despues poder consumirlos de nuestra estrategia.
+De la lectura anterior debemos copiar el ``consumer_key`` y el ``consumer_secret`` de twitter, es importante copiarlos en nuestro archivo ``.env`` y además también debemos crear un string de session, ya que esté middleware de passport con twitter necesita tener una session activa, a mi me gusta usar una página que se llama [keygen.io](keygen.io) donde podemos copiar un SHA KEY de 256 bits, lo copiamos y lo incluimos en nuestro secret de session también es importante leerlos desde nuestro archivo de configuración para despues poder consumirlos de nuestra estrategia.
 
-Ahora vamos a crear una nueva estrategia que se va ha llamar twitter, creamos la estrategia twitter.js.
+Ahora vamos a crear una nueva estrategia que se va ha llamar twitter, creamos la estrategia ``twitter.js``.
 
 ```js
 const passport = require('passport');
@@ -1975,7 +2230,7 @@ app.get(
 
     const { token, ...user } = req.user;
 
-    res.cookie("token", token, {
+    res.[cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))("token", token, {
       httpOnly: !config.dev,
       secure: !config.dev
     });
@@ -1986,6 +2241,10 @@ app.get(
 ```
 
 Ahora lo que tenemos que hacer es levantar nuestros 2 servidores y hacer las pruebas necesarias, si aún no estamos autorizados por twitter tenemos que esperar a que nos autorize para que funcione correctamente.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Autenticación con Facebook
 
@@ -2050,7 +2309,7 @@ app.get(
 
     const { token, ...user } = req.user;
 
-    res.cookie("token", token, {
+    res.[cookie](https://es.wikipedia.org/wiki/Cookie_(inform%C3%A1tica))("token", token, {
       httpOnly: !config.dev,
       secure: !config.dev
     });
@@ -2060,13 +2319,17 @@ app.get(
 );
 ```
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Seguridad con Helmet
 
 En esté modulo vamos a implementar varias estrategias para asegurar nuestra aplicación en express, lo primero que vamos a implementar es un middleware llamado [Helmet.js](https://helmetjs.github.io/).
 
-Helmet en su página nos muestra lo fácil que es usarlo, es cuestion de requerir helmet y simplemente usarlo como un middleware general en la aplicación de express, lo importante que tiene helmet es que implementa 13 funciones middleware que establecen códigos ``htpp`` que ayudan a la seguridad de nuestra aplicación, el por defecto activa algunos, pero aún tenemos la posibilidad de activar todos los 13. 
+Helmet en su página nos muestra lo fácil que es usarlo, es cuestion de requerir helmet y simplemente usarlo como un **middleware** general en la aplicación de express, lo importante que tiene helmet es que **implementa 13 funciones** **middleware** que establecen códigos ``htpp`` que ayudan a la seguridad de nuestra aplicación, el por defecto activa algunos, pero aún tenemos la posibilidad de activar todos los 13. 
 
-Lo que me parece muy interesante de su página, es que no solo explica que es el módulo sino también cúal es el ataque que se le hace a ese modulo. Por ejemplo uno de mis preferidos se llamá ``Don't Sniff Mimetype``, lo que sucede es que el navegador trata de establecer cuál es el tipo de contenido que tiene cualquier recurso, entonces lo que podría hacer el atacante es decir que la URL hace parte de una imagen, pero en realidad esa imagen es un archivo ``html`` que puede ejecutar javascript malisioso, lo que hace helmet por debajo es simplemente establecer un ``header`` que se llama ``X-Content-Type-Options`` ``nosniff`` así sucesivamente tiene otros diferentes headers que permiten establecer mejores prácticas de seguridad.
+Lo que me parece muy interesante de su página, es que no solo explica que es el módulo sino también cúal es el ataque que se le hace a ese modulo. Por ejemplo uno de mis preferidos se llamá ``Don't Sniff Mimetype``, lo que sucede es que el navegador trata de establecer cuál es el tipo de contenido que tiene cualquier recurso, entonces lo que podría hacer el atacante es decir que la URL hace parte de una imagen, pero en realidad esa imagen es un archivo ``html`` que puede ejecutar javascript malisioso, lo que hace helmet por debajo es simplemente establecer un ``header`` que se llama ``X-Content-Type-Options`` ``nosniff`` así sucesivamente **tiene otros diferentes headers que permiten establecer mejores prácticas de seguridad**.
 
 Para implementar helmet lo primero que necesitamos hacer es instalar nuestra dependencia de helmet ``npm i helmet``, luego nos dirigimos a nuestro archivo index y requerimos el paquete ``helmet``.
 
@@ -2081,13 +2344,21 @@ app.use(helmet())
 
 Esto por defecto esta estableciendo los valores por defecto que tiene helmet, si quisieramos establecer parametros extra, lo único que deberíamos hacer es pasar un archivo de configuración, así de sencillo es implementar helmet en nuestra aplicación.
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Detectando vulnearabilidades con npm audit
 
 Lo único que debemos hacer es correr: ``npm audit``. npm audit lo que hace es que se va por todas nuestras dependencias e identifica si hay vulnerabilidades desconocidas.
 
-Si tuvieramos un proyecto antiguo con vulnerabilidades lo que tendriamos que hacer para corregirlas es correr el comando ```npm audit fix``
+Si tuvieramos un proyecto antiguo con vulnerabilidades lo que tendriamos que hacer para corregirlas es correr el comando ``npm audit fix``
 
-Como puedes ver estas vulnerabilidades pueden ocurrir en cualquier momento, lo idas es correr ``npm audit`` de vez en cuando, sin embargo podemos automatizar la deteccción de vulnerabilidades usando un servicio llamado ``snyk``.
+Como puedes ver estas vulnerabilidades pueden ocurrir en cualquier momento, lo idea es correr ``npm audit`` de vez en cuando, sin embargo podemos automatizar la deteccción de vulnerabilidades usando un servicio llamado ``snyk``.
+
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
 ## Automatizar el chequeo de vulnerabilidades con Snyk
 
@@ -2123,19 +2394,23 @@ En lo posible debemos evitar tener vulnerabilidades High (H) o Medium (M) para c
 
 <code>Tener en cuenta que algunas vulnerabilidades no tienen solución en el momento por lo que toca estar pendiente de un posible fix o cambiar de librería.</code>
 
-## Que és OWASP y buenas prácticas de seguridad
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
 
-OWASP: son las siglas del Open Web Application Security Proyect, es una organización que se encarga de velar por las buenas prácticas de seguridad a nivel mundial. Hay un documento que se llama el Top Ten OWASP y lista los 10 resgos de seguridad más comunes.
+## Qué es OWASP y buenas prácticas de seguridad
+
+**OWASP**: son las siglas del **Open Web Application Security Proyect**, es una organización que se encarga de velar por las buenas prácticas de seguridad a nivel mundial. Hay un documento que se llama el **Top Ten OWASP** y **lista los 10 resgos de seguridad más comunes**.
 
 Hablemos de las primeras 3:
 
-Inyección: es un ataque que describe como hacer sql-inyection, esté ataque determina que hay input que no están protegidos podemos usar código SQL en nuestros inputs directamente para afectar la base de datos
+**Inyección**: es un ataque que describe como hacer sql-inyection, esté ataque determina que hay input que no están protegidos podemos usar código SQL en nuestros inputs directamente para afectar la base de datos
 
-Broken Autentication: Está relaciona con todo el tema de autenticación, explica en no fomentar o banear personas que intentan autenticar muchas veces o usar contraseñas muy debiles. Por ejemplo te puedes dirigir a [howsecureismypassword](https://howsecureismypassword.net/) y probar que tan seguro es tu password.
+**Broken Autentication**: Está relaciona con todo el tema de autenticación, explica en no fomentar o banear personas que intentan autenticar muchas veces o usar contraseñas muy debiles. Por ejemplo te puedes dirigir a [howsecureismypassword](https://howsecureismypassword.net/) y probar que tan seguro es tu password.
 
 Si yo ingreso el password ``123456`` me dice que el password será crakeado instantaneamente y esto es porque este password hace parte de los top 5 de los password más usados, la mejor manera de construir un password seguro es que tenga muchos caracteres inluso caracteres especiales.
 
-Sesitive Data Exposure: Aunque tu no lo creas revelar información sensible al usuario puede ser factor para que los hackers hagan algo llamado ingenieria social, si ellos tienen tu información personal se pueden hacer pasar por identidades gubernamentales o por cualquier otra identidad que se haga creer que es tu banco, seguridad social, etc. 
+**Sesitive Data Exposure**: Aunque tu no lo creas revelar información sensible al usuario puede ser factor para que los hackers hagan algo llamado **ingenieria social**, si ellos tienen tu información personal se pueden hacer pasar por identidades gubernamentales o por cualquier otra identidad que se haga creer que es tu banco, seguridad social, etc. 
 
 Por eso es muy importante mantener la información segura y encriptada. La [GDPR] que significa **General Data Protection Regulation** que te obliga a que la información de tus usuarios sea guardada de manera segura, es muy importante seguir esta ley porque si no te pueden multar.
 
@@ -2144,6 +2419,10 @@ Si quieres seguir profundizando en esté tema te recomiendo el curso de OWASP qu
 Top Ten de seguridad de OWASP
 https://www.owasp.org/images/5/5e/OWASP-Top-10-2017-es.pdf
 
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+
 ## Buenas prácticas de seguridad
 
 - **Usar un gestor de contraseñas**: las contraseñas nunca se deben de repetir además los gestores de contraseñas nos indican si las contraseñas tienen buena seguridad, si están repetidas y las genera por nosotros, recurda que las contraseñas son como la ropa interior. _Debes cambiarlas regularmente, no las debes dejar en cima del escritorio, y nunca se las prestes a nadie_.
@@ -2151,6 +2430,7 @@ https://www.owasp.org/images/5/5e/OWASP-Top-10-2017-es.pdf
 <div align="center">
   <img src="./assets/passwords.png" alt="">
 </div>
+<br>
 
 - **Usar multi-factor auth**: o autenticación en 2 pasos, estó trata además de que introduzcas la contraseña en tu cuenta, debes además generar otro método de autenticación, esté puede ser _reconocimiento facial, la huella, o hay algo muy interesante llamado ue keys: son una llave que necesita ser introducida a tu computador para poder acceder a tu cuenta_.
 
@@ -2158,7 +2438,11 @@ https://www.owasp.org/images/5/5e/OWASP-Top-10-2017-es.pdf
 
 - **Manten actualizadas tus aplicaciones y SO**: como vimos en clases anteriores las vulnerabilidades de los paquetes suceden de un momento para otro, es muy importante entonces mantener actualizadas las aplicaciones y el sistema operativo porque ahí es donde se corrigen todas estas vulnerabilidades, además como lo mencionamos debes mantener actualizadas las dependencias, no solo de un proyecto si no de todos tus proyectos.
 
-- **Mantente informado**: twitter es una muy buena fuente de información acerca de cuales son los ataques de seguridad, el hastag #secure #cibersecure te puede ayudar a identificar que es lo que esta sucediendo, investiga que blogs de seguridad existen, ve ha eventos, y si vas a salir con una aplicación a produccion te recomiendo que contrates a una compañia experta en seguridad que te haga una auditoria de tu aplicación.
+- **Mantente informado**: twitter es una muy buena fuente de información acerca de cuales son los ataques de seguridad, el hastag ``#secure`` ``#cibersecure`` te puede ayudar a identificar que es lo que esta sucediendo, investiga que blogs de seguridad existen, ve ha eventos, y si vas a salir con una aplicación a produccion te recomiendo que contrates a una compañia experta en seguridad que te haga una auditoria de tu aplicación.
 
-
-
+<div align="right">
+  <small><a href="#tabla-de-contenido">🡡 volver al inicio</a></small>
+</div>
+<br>
+  <p align="center" style="font-weight:bold">by: Jasan Hernández :D</p>
+<br>
