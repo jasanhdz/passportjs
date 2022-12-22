@@ -23,7 +23,7 @@
     "dotenv": "8.1.0",
     "express": "4.17.1",
     "helmet": "3.21.1",
-    "jsonwebtoken": "8.5.1",
+    "jsonwebtoken": "9.0.0",
     "mongodb": "3.3.2",
     "passport": "0.4.0",
     "passport-http": "0.3.0",
